@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import List
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="APP_", extra="ignore")
+
+    database_url: str = "sqlite:///./mafia_manager.db"
+    secret_key: str = "supersecretkeychange"  # override in .env
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24
+    cors_origins: List[str] | str = ["http://localhost:5173"]
+
+    @field_validator("cors_origins")
+    @classmethod
+    def split_origins(cls, v: List[str] | str) -> List[str]:
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

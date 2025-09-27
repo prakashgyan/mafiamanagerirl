@@ -1,0 +1,81 @@
+# General
+.DS_Store
+Thumbs.db
+*.log
+logs/
+*.tmp
+*.swp
+*.swo
+.cache/
+.idea/
+.vscode/
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+python_build/
+site/
+.Python
+pip-wheel-metadata/
+*.manifest
+*.spec
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.cover
+
+env/
+venv/
+.venv/
+ENV/
+ENV*/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# FastAPI / Uvicorn
+uvicorn.log
+
+# Node / Vite
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+frontend/dist/
+frontend/build/
+backend/static/
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing & coverage
+coverage/
+.jest/
+
+# SocketIO
+socketio_logs/
+
+# OS-specific
+ehthumbs.db
+Icon?
+
+# Local tooling
+*.code-workspace
+.local/
