@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "https://mafiadeskapi.prakashgyan.dev",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, "")
       }

@@ -41,10 +41,19 @@ export type GameDetail = GameSummary & {
   logs: LogEntry[];
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+const DEFAULT_API_BASE = "https://mafiadeskapi.prakashgyan.dev";
+const API_BASE = (import.meta.env.VITE_API_BASE ?? DEFAULT_API_BASE).replace(/\/+$/, "");
+
+const buildUrl = (path: string) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (!API_BASE) {
+    return normalizedPath;
+  }
+  return `${API_BASE}${normalizedPath}`;
+};
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`.replace(/\/+/, "/"), {
+  const response = await fetch(buildUrl(path), {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
