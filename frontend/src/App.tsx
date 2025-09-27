@@ -5,9 +5,11 @@ import AssignRolesPage from "./pages/AssignRolesPage";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import GameOverPage from "./pages/GameOverPage";
+import GameHistoryPage from "./pages/GameHistoryPage";
 import NewGamePage from "./pages/NewGamePage";
 import ProfileHomePage from "./pages/ProfileHomePage";
 import PublicViewPage from "./pages/PublicViewPage";
+import FriendsPage from "./pages/FriendsPage";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -43,10 +45,26 @@ const App = () => {
         }
       />
       <Route
+        path="/games/history"
+        element={
+          <RequireAuth>
+            <GameHistoryPage />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/games/new"
         element={
           <RequireAuth>
             <NewGamePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/friends"
+        element={
+          <RequireAuth>
+            <FriendsPage />
           </RequireAuth>
         }
       />

@@ -1,15 +1,57 @@
-import { DragEvent, useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useDrag, useDrop } from "react-dnd";
+import type { ConnectDropTarget } from "react-dnd";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
 import LogsSection from "../components/LogTimeline";
 import { api, GameDetail, GamePhase, Player } from "../services/api";
 import { getPlayerCardClasses, getRoleLabelClass } from "../utils/playerStyles";
+import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
+
+const DND_TYPE = "PLAYER";
+
+type DragItem = {
+  playerId: number;
+};
+
+type DraggablePlayerCardProps = {
+  player: Player;
+};
+
+const DraggablePlayerCard = ({ player }: DraggablePlayerCardProps) => {
+  const [{ isDragging }, dragRef] = useDrag<DragItem, void, { isDragging: boolean }>(
+    () => ({
+      type: DND_TYPE,
+      item: { playerId: player.id },
+      canDrag: player.is_alive,
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+    }),
+    [player]
+  );
+
+  return (
+    <div
+      ref={dragRef}
+      className={`rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm shadow-sm shadow-black/30 transition ${
+        player.is_alive ? "cursor-grab hover:border-sky-400/60" : "cursor-not-allowed opacity-70"
+      } ${isDragging ? "opacity-60" : ""} ${getPlayerCardClasses(player)}`}
+      aria-disabled={!player.is_alive}
+    >
+      <p className="font-semibold text-white">{player.name}</p>
+      <p className={`text-xs uppercase tracking-wide ${getRoleLabelClass(player)}`}>
+        {player.role ?? "Unassigned"}
+      </p>
+      {!player.is_alive && <p className="text-[0.65rem] text-slate-400">Eliminated</p>}
+    </div>
+  );
+};
 
 type NightActionType = "kill" | "save" | "investigate";
-type DropZoneType = "vote" | NightActionType;
 
-const DashboardPage = () => {
+const DashboardPageContent = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<GameDetail | null>(null);
@@ -63,6 +105,10 @@ const DashboardPage = () => {
     () => alivePlayers.filter((player) => (player.role?.toLowerCase() ?? "") === "detective"),
     [alivePlayers]
   );
+  const aliveDoctors = useMemo(
+    () => alivePlayers.filter((player) => (player.role?.toLowerCase() ?? "") === "doctor"),
+    [alivePlayers]
+  );
   const investigateTargets = useMemo(() => {
     if (aliveDetectives.length === 1) {
       const detectiveId = aliveDetectives[0].id;
@@ -92,13 +138,77 @@ const DashboardPage = () => {
     [investigateTargets]
   );
 
-  const handleDragStart = (event: DragEvent<HTMLDivElement>, playerId: number) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("application/x-player-id", String(playerId));
-    event.dataTransfer.setData("text/plain", String(playerId));
-  };
+  const hasAliveDoctors = aliveDoctors.length > 0;
+  const hasAliveDetectives = aliveDetectives.length > 0;
 
-  const [activeDropZone, setActiveDropZone] = useState<DropZoneType | null>(null);
+  const plannedSaveId = plannedNightActions.save;
+  const plannedInvestigateId = plannedNightActions.investigate;
+
+  const isDayPhase = game?.current_phase === "day";
+
+  const [{ isOver: isVoteOver, canDrop: canVoteDrop }, voteDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
+    accept: DND_TYPE,
+    canDrop: (item) => voteEligibleIds.has(item.playerId),
+    drop: (item) => setVoteTarget(item.playerId),
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop(),
+    }),
+  }), [voteEligibleIds]);
+
+  const [{ isOver: isKillOver, canDrop: canKillDrop }, killDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
+    accept: DND_TYPE,
+    canDrop: (item) => !isDayPhase && killEligibleIds.has(item.playerId),
+    drop: (item) => setPlannedNightActions((prev) => ({ ...prev, kill: item.playerId })),
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop(),
+    }),
+  }), [isDayPhase, killEligibleIds]);
+
+  const [{ isOver: isSaveOver, canDrop: canSaveDrop }, saveDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
+    accept: DND_TYPE,
+    canDrop: (item) => !isDayPhase && hasAliveDoctors && saveEligibleIds.has(item.playerId),
+    drop: (item) => setPlannedNightActions((prev) => ({ ...prev, save: item.playerId })),
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop(),
+    }),
+  }), [hasAliveDoctors, isDayPhase, saveEligibleIds]);
+
+  const [{ isOver: isInvestigateOver, canDrop: canInvestigateDrop }, investigateDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
+    accept: DND_TYPE,
+    canDrop: (item) => !isDayPhase && hasAliveDetectives && investigateEligibleIds.has(item.playerId),
+    drop: (item) => setPlannedNightActions((prev) => ({ ...prev, investigate: item.playerId })),
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop(),
+    }),
+  }), [hasAliveDetectives, investigateEligibleIds, isDayPhase]);
+
+  useEffect(() => {
+    if (hasAliveDoctors || !plannedSaveId) {
+      return;
+    }
+    setPlannedNightActions((prev) => {
+      if (!prev.save) return prev;
+      const next = { ...prev };
+      delete next.save;
+      return next;
+    });
+  }, [hasAliveDoctors, plannedSaveId]);
+
+  useEffect(() => {
+    if (hasAliveDetectives || !plannedInvestigateId) {
+      return;
+    }
+    setPlannedNightActions((prev) => {
+      if (!prev.investigate) return prev;
+      const next = { ...prev };
+      delete next.investigate;
+      return next;
+    });
+  }, [hasAliveDetectives, plannedInvestigateId]);
 
   const clearNightAction = (action: "kill" | "save" | "investigate") => {
     setPlannedNightActions((prev) => {
@@ -106,32 +216,6 @@ const DashboardPage = () => {
       delete next[action];
       return next;
     });
-  };
-
-  const handleNightActionDrop = (
-    event: DragEvent<HTMLDivElement>,
-    action: "kill" | "save" | "investigate",
-    allowedIds: Set<number>
-  ) => {
-    event.preventDefault();
-    setActiveDropZone(null);
-    const raw = event.dataTransfer.getData("application/x-player-id") || event.dataTransfer.getData("text/plain");
-    const playerId = Number(raw);
-    if (!playerId || !allowedIds.has(playerId)) {
-      return;
-    }
-    setPlannedNightActions((prev) => ({ ...prev, [action]: playerId }));
-  };
-
-  const handleVoteDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setActiveDropZone(null);
-    const raw = event.dataTransfer.getData("application/x-player-id") || event.dataTransfer.getData("text/plain");
-    const playerId = Number(raw);
-    if (!playerId || !voteEligibleIds.has(playerId)) {
-      return;
-    }
-    setVoteTarget(playerId);
   };
 
   const processDayActions = useCallback(async () => {
@@ -286,30 +370,48 @@ const DashboardPage = () => {
 
   const isDay = game.current_phase === "day";
 
+  const palette = isDay
+    ? {
+        background: "bg-gradient-to-br from-sky-950 via-slate-950 to-slate-950",
+        glowPrimary: "bg-sky-500/25",
+        glowSecondary: "bg-amber-300/15",
+        radial: "bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_55%)]",
+        badge: "border-sky-400/30 bg-sky-500/10 text-sky-200",
+        hoverBorder: "border-sky-400/70 bg-sky-500/15",
+        readyBorder: "border-emerald-400/70 bg-emerald-500/10",
+        idleBorder: "border-white/10 bg-slate-900/55",
+        primaryButton: "bg-amber-400 hover:bg-amber-300 text-slate-900",
+        syncButton: "bg-sky-500 hover:bg-sky-400 text-slate-900",
+        phaseBadge: "border-amber-400/60 bg-amber-500/10 text-amber-200",
+      }
+    : {
+        background: "bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950",
+        glowPrimary: "bg-indigo-500/25",
+        glowSecondary: "bg-purple-500/20",
+        radial: "bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.2),_transparent_55%)]",
+        badge: "border-indigo-400/40 bg-indigo-500/15 text-indigo-200",
+        hoverBorder: "border-indigo-400/70 bg-indigo-500/15",
+        readyBorder: "border-emerald-400/70 bg-emerald-500/10",
+        idleBorder: "border-white/10 bg-slate-900/55",
+        primaryButton: "bg-indigo-400 hover:bg-indigo-300 text-slate-900",
+        syncButton: "bg-sky-500 hover:bg-sky-400 text-slate-900",
+        phaseBadge: "border-amber-400/60 bg-amber-500/10 text-amber-200",
+      };
+
   const renderVoteDropZone = () => {
     const selectedPlayer = game?.players.find((player) => player.id === voteTarget) ?? null;
     const allowedPlayers = alivePlayers;
-    const isActive = activeDropZone === "vote";
     const baseClasses =
-      "flex flex-col gap-3 rounded-xl border-2 border-dashed px-4 py-4 transition-colors duration-200";
-    const stateClasses = isActive
-      ? "border-sky-400 bg-slate-800/70"
+      "flex flex-col gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm transition-colors duration-200 shadow-sm shadow-black/30";
+    const stateClasses = isVoteOver && canVoteDrop
+      ? palette.hoverBorder
       : selectedPlayer
-        ? "border-emerald-400/70 bg-slate-900/70"
-        : "border-slate-700 bg-slate-900/50";
+        ? palette.readyBorder
+        : palette.idleBorder;
     const placeholder = allowedPlayers.length === 0 ? "No eligible players" : "Drag a player here";
 
     return (
-      <div
-        onDragOver={(event) => {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "move";
-        }}
-        onDragEnter={() => setActiveDropZone("vote")}
-        onDragLeave={() => setActiveDropZone((current) => (current === "vote" ? null : current))}
-        onDrop={handleVoteDrop}
-        className={`${baseClasses} ${stateClasses}`}
-      >
+      <div ref={voteDropRef} className={`${baseClasses} ${stateClasses}`}>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold uppercase tracking-wide text-slate-200">Vote Out Player</span>
           {selectedPlayer && (
@@ -323,13 +425,13 @@ const DashboardPage = () => {
           )}
         </div>
         {selectedPlayer ? (
-          <div className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-slate-100">
+          <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
             {selectedPlayer.name}
           </div>
         ) : (
           <p className="text-sm text-slate-400">{placeholder}</p>
         )}
-        <p className="text-xs text-slate-500">
+        <p className="text-[0.7rem] text-slate-500">
           {allowedPlayers.length === 0
             ? "No players currently meet the requirements."
             : "Drag from the players list on the right."}
@@ -338,38 +440,41 @@ const DashboardPage = () => {
     );
   };
 
+  type NightDropZoneConfig = {
+    dropRef: ConnectDropTarget;
+    isOver: boolean;
+    canDrop: boolean;
+    isEnabled: boolean;
+    disabledMessage?: string;
+  };
+
   const renderNightActionDropZone = (
     action: NightActionType,
     label: string,
     allowedPlayers: Player[],
-    selectedPlayer?: Player | null
+    selectedPlayer: Player | null | undefined,
+    { dropRef, isOver, canDrop, isEnabled, disabledMessage }: NightDropZoneConfig
   ) => {
-    const allowedIds =
-      action === "kill" ? killEligibleIds : action === "save" ? saveEligibleIds : investigateEligibleIds;
-    const isActive = activeDropZone === action;
     const baseClasses =
-      "flex flex-col gap-3 rounded-xl border-2 border-dashed px-4 py-4 transition-colors duration-200";
-    const stateClasses = isActive
-      ? "border-sky-400 bg-slate-800/70"
+      "flex flex-col gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm transition-colors duration-200 shadow-sm shadow-black/30";
+    const stateClasses = !isEnabled
+      ? "border-white/10 bg-slate-950/30 opacity-60"
+      : isOver && canDrop
+      ? palette.hoverBorder
       : selectedPlayer
-        ? "border-emerald-400/70 bg-slate-900/70"
-        : "border-slate-700 bg-slate-900/50";
-    const placeholder = allowedPlayers.length === 0 ? "No eligible players" : "Drag a player here";
+        ? palette.readyBorder
+        : palette.idleBorder;
+    const placeholder = !isEnabled
+      ? disabledMessage ?? "Role eliminated."
+      : allowedPlayers.length === 0
+      ? "No eligible players"
+      : "Drag a player here";
 
     return (
-      <div
-        onDragOver={(event) => {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "move";
-        }}
-        onDragEnter={() => setActiveDropZone(action)}
-        onDragLeave={() => setActiveDropZone((current) => (current === action ? null : current))}
-        onDrop={(event) => handleNightActionDrop(event, action, allowedIds)}
-        className={`${baseClasses} ${stateClasses}`}
-      >
+      <div ref={dropRef} className={`${baseClasses} ${stateClasses}`}>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold uppercase tracking-wide text-slate-200">{label}</span>
-          {selectedPlayer && (
+          {selectedPlayer && isEnabled && (
             <button
               type="button"
               onClick={() => clearNightAction(action)}
@@ -379,19 +484,24 @@ const DashboardPage = () => {
             </button>
           )}
         </div>
-        {selectedPlayer ? (
-          <div className="rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-slate-100">
+        {selectedPlayer && isEnabled ? (
+          <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
             {selectedPlayer.name}
           </div>
         ) : (
           <p className="text-sm text-slate-400">{placeholder}</p>
         )}
-        <p className="text-xs text-slate-500">
-          {allowedPlayers.length === 0
+        <p className="text-[0.7rem] text-slate-500">
+          {!isEnabled
+            ? disabledMessage ?? "This action is unavailable."
+            : allowedPlayers.length === 0
             ? "No players currently meet the requirements."
             : "Drag from the players list on the right."}
         </p>
-        {action === "kill" && plannedNightActions.save && plannedNightActions.save === plannedNightActions.kill && (
+        {isEnabled &&
+          action === "kill" &&
+          plannedNightActions.save &&
+          plannedNightActions.save === plannedNightActions.kill && (
           <p className="text-xs font-semibold text-amber-300">
             This target will survive; the log will record that the mafia tried to kill them.
           </p>
@@ -401,123 +511,184 @@ const DashboardPage = () => {
   };
 
   return (
-  <div className={`min-h-screen bg-gradient-to-br ${isDay ? "from-slate-700 via-slate-600 to-slate-700" : "from-slate-950 via-night to-slate-950"} text-slate-100`}>
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <button className="mb-2 text-sm text-slate-300" onClick={() => navigate(-1)}>
-              ← Back
-            </button>
-            <h1 className="text-3xl font-semibold">Management Dashboard</h1>
-            <p className="text-sm text-slate-300">
-              Game #{game.id} • {game.current_phase === "day" ? "Day" : "Night"} {game.current_round}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => switchPhase(isDay ? "night" : "day")}
-              disabled={processingQueuedActions}
-              className={`rounded-lg px-4 py-2 font-semibold text-slate-900 transition ${
-                processingQueuedActions
-                  ? "bg-amber-400/60 cursor-not-allowed"
-                  : "bg-amber-400 hover:bg-amber-300"
-              }`}
-            >
-              {processingQueuedActions ? "Resolving Actions..." : `End ${isDay ? "Day" : "Night"}`}
-            </button>
-            <button
-              onClick={() => finishGame("Villagers")}
-              className="rounded-lg border border-emerald-400 px-4 py-2 text-sm text-emerald-300"
-            >
-              Villagers Win
-            </button>
-            <button
-              onClick={() => finishGame("Mafia")}
-              className="rounded-lg border border-rose-400 px-4 py-2 text-sm text-rose-300"
-            >
-              Mafia Win
-            </button>
-            <button
-              onClick={syncNightEvents}
-              className="rounded-lg bg-indigo-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-indigo-300"
-            >
-              Sync Night Events
-            </button>
-          </div>
-        </header>
-
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <section className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-            <h2 className="text-xl font-semibold">Control Center</h2>
-            <p className="text-xs uppercase tracking-wide text-slate-400">
-              {isDay
-                ? "Drag an eligible player into the vote zone. The elimination happens when you end the day."
-                : "Drag eligible players into each role. Actions are queued until you end the night."}
-            </p>
-            <div className="grid gap-5 md:grid-cols-2">
-              {isDay ? (
-                renderVoteDropZone()
-              ) : (
-                <>
-                  {renderNightActionDropZone("kill", "Mafia Kill", aliveNonMafiaPlayers, killTargetPlayer)}
-                  {renderNightActionDropZone("save", "Doctor Save", alivePlayers, saveTargetPlayer)}
-                  {renderNightActionDropZone(
-                    "investigate",
-                    "Detective Investigate",
-                    investigateTargets,
-                    investigateTargetPlayer
-                  )}
-                </>
-              )}
-            </div>
-            <div>
-              <label className="text-sm text-slate-300" htmlFor={noteFieldId}>
-                Notes / Summary
-              </label>
-              <textarea
-                id={noteFieldId}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-400 focus:outline-none"
-                placeholder="Optional note to include in the log entry"
-              />
-            </div>
-          </section>
-
-          <aside className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-            <h2 className="text-xl font-semibold">Players</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {game.players.map((player) => (
-                <div
-                  key={player.id}
-                  draggable={player.is_alive}
-                  onDragStart={(event) => player.is_alive && handleDragStart(event, player.id)}
-                  onDragEnd={() => setActiveDropZone(null)}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
-                    player.is_alive ? "cursor-grab" : "cursor-not-allowed"
-                  } ${getPlayerCardClasses(player)}`}
-                >
-                  <p className="font-semibold">{player.name}</p>
-                  <p className={`text-xs uppercase tracking-wide ${getRoleLabelClass(player)}`}>
-                    {player.role ?? "Unassigned"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </aside>
+    <div className={`relative min-h-screen ${palette.background} text-slate-100`}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className={`absolute left-[12%] top-0 h-72 w-72 rounded-full blur-3xl ${palette.glowPrimary}`} />
+          <div className={`absolute bottom-14 right-[16%] h-80 w-80 rounded-full blur-3xl ${palette.glowSecondary}`} />
+          <div className={`absolute inset-0 ${palette.radial}`} />
         </div>
 
-        <LogsSection
-          className="mt-6"
-          logs={game.logs}
-          players={game.players}
-          title="Logs"
-          subtitle="Auto-updating"
-        />
+        <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
+          <button
+            className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
+            onClick={() => navigate(-1)}
+          >
+            <span aria-hidden>←</span>
+            Back
+          </button>
+
+          <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-4">
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${palette.badge}`}
+                >
+                  MafiaDesk
+                </span>
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-semibold text-white sm:text-4xl">Management dashboard</h1>
+                  <p className="text-sm text-slate-300">
+                    {isDay
+                      ? "Steer the town through accusations, votes, and reveals."
+                      : "Coordinate the night plan and keep every role in sync."}
+                  </p>
+                </div>
+              </div>
+              <div className="grid auto-rows-fr gap-3 text-sm text-slate-200 sm:grid-cols-2">
+                <div className={`rounded-2xl border px-4 py-3 text-center ${palette.phaseBadge}`}>
+                  <p className="text-[0.65rem] uppercase tracking-wide">Current phase</p>
+                  <p className="mt-1 min-h-[1.75rem] text-lg font-semibold">
+                    {isDay ? "Day" : "Night"} {game.current_round}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
+                  <p className="text-[0.65rem] uppercase tracking-wide text-slate-300">Alive players</p>
+                  <p className="mt-1 min-h-[1.75rem] text-lg font-semibold text-white">{alivePlayers.length}</p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-end">
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => switchPhase(isDay ? "night" : "day")}
+                disabled={processingQueuedActions}
+                className={`inline-flex items-center justify-center rounded-2xl px-5 py-2 text-sm font-semibold transition ${palette.primaryButton} ${
+                  processingQueuedActions ? "cursor-not-allowed opacity-80" : ""
+                }`}
+              >
+                {processingQueuedActions ? "Resolving Actions..." : `End ${isDay ? "Day" : "Night"}`}
+              </button>
+              <button
+                onClick={() => finishGame("Villagers")}
+                className="inline-flex items-center justify-center rounded-2xl border border-emerald-400/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-200 transition hover:border-emerald-300"
+              >
+                Villagers Win
+              </button>
+              <button
+                onClick={() => finishGame("Mafia")}
+                className="inline-flex items-center justify-center rounded-2xl border border-rose-400/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-rose-200 transition hover:border-rose-300"
+              >
+                Mafia Win
+              </button>
+              <button
+                onClick={syncNightEvents}
+                className={`inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold transition ${palette.syncButton}`}
+              >
+                Sync Night Events
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+            <section className="space-y-6 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Control center</h2>
+                <p className="text-xs uppercase tracking-wide text-slate-400">
+                  {isDay
+                    ? "Drag an eligible player into the vote zone. The elimination happens when you end the day."
+                    : "Queue the mafia, doctor, and detective actions. They resolve when you end the night."}
+                </p>
+              </div>
+              <div className={`grid gap-5 ${isDay ? "md:grid-cols-1" : "md:grid-cols-2 xl:grid-cols-3"}`}>
+                {isDay ? (
+                  renderVoteDropZone()
+                ) : (
+                  <>
+                    {renderNightActionDropZone(
+                      "kill",
+                      "Mafia Kill",
+                      aliveNonMafiaPlayers,
+                      killTargetPlayer,
+                      {
+                        dropRef: killDropRef,
+                        isOver: isKillOver,
+                        canDrop: canKillDrop,
+                        isEnabled: !isDay,
+                      }
+                    )}
+                    {renderNightActionDropZone(
+                      "save",
+                      "Doctor Save",
+                      alivePlayers,
+                      saveTargetPlayer,
+                      {
+                        dropRef: saveDropRef,
+                        isOver: isSaveOver,
+                        canDrop: canSaveDrop,
+                        isEnabled: !isDay && hasAliveDoctors,
+                        disabledMessage: "No living doctors — unable to save.",
+                      }
+                    )}
+                    {renderNightActionDropZone(
+                      "investigate",
+                      "Detective Investigate",
+                      investigateTargets,
+                      investigateTargetPlayer,
+                      {
+                        dropRef: investigateDropRef,
+                        isOver: isInvestigateOver,
+                        canDrop: canInvestigateDrop,
+                        isEnabled: !isDay && hasAliveDetectives,
+                        disabledMessage: "No living detectives — unable to investigate.",
+                      }
+                    )}
+                  </>
+                )}
+              </div>
+              <div>
+                <label className="text-sm text-slate-300" htmlFor={noteFieldId}>
+                  Notes / summary
+                </label>
+                <textarea
+                  id={noteFieldId}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  placeholder="Optional log message to send with your next action"
+                />
+              </div>
+            </section>
+
+            <aside className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
+              <h2 className="text-lg font-semibold text-white">Players</h2>
+              <p className="mb-4 text-xs uppercase tracking-wide text-slate-400">Drag living players into the targets.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {game.players.map((player) => (
+                  <DraggablePlayerCard key={player.id} player={player} />
+                ))}
+              </div>
+            </aside>
+          </div>
+
+          <LogsSection
+            className="mt-8 border-white/10 bg-slate-900/70 shadow-2xl shadow-slate-950/60"
+            logs={game.logs}
+            players={game.players}
+            title="Logs"
+            subtitle="Auto-updating"
+          />
+        </div>
       </div>
-    </div>
   );
 };
+
+const DashboardPage = () => (
+  <ResponsiveDndProvider>
+    <DashboardPageContent />
+  </ResponsiveDndProvider>
+);
 
 export default DashboardPage;

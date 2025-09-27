@@ -17,7 +17,7 @@ from .socket_manager import manager
 settings = get_settings()
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="Mafia Manager IRL", version="1.0.0")
+app = FastAPI(title="MafiaDesk", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
