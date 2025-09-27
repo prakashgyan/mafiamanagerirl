@@ -77,6 +77,25 @@ type LogsSectionProps = {
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const buildWholeWordPatterns = (values: string[]): string[] =>
+  values
+    .map((value) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return "";
+      }
+
+      const escaped = escapeRegExp(trimmed);
+      const startsWithWord = /\w/.test(trimmed[0] ?? "");
+      const endsWithWord = /\w/.test(trimmed[trimmed.length - 1] ?? "");
+
+      const prefix = startsWithWord ? "\\b" : "";
+      const suffix = endsWithWord ? "\\b" : "";
+
+      return `${prefix}${escaped}${suffix}`;
+    })
+    .filter(Boolean);
+
 const InlinePlayerChip = ({ player }: { player: Player }) => {
   const roleKey = player.role?.toLowerCase() ?? "";
   const style = player.is_alive ? CHIP_ROLE_STYLE[roleKey] ?? CHIP_DEFAULT_STYLE : CHIP_ELIMINATED_STYLE;
@@ -110,7 +129,7 @@ const LogsSection = ({
 }: LogsSectionProps) => {
   const { playerNameMap, highlightRegex } = useMemo(() => {
     const map = new Map<string, Player>();
-    const escapedNames: string[] = [];
+    const rawNames: string[] = [];
 
     for (const player of players) {
       const trimmed = player.name.trim();
@@ -118,27 +137,30 @@ const LogsSection = ({
         continue;
       }
       map.set(trimmed.toLowerCase(), player);
-      escapedNames.push(escapeRegExp(trimmed));
+      rawNames.push(trimmed);
     }
 
-    escapedNames.sort((a, b) => b.length - a.length);
+    rawNames.sort((a, b) => b.length - a.length);
 
     const roleWords = Object.keys(ROLE_WORD_CLASS_MAP);
     const keywordWords = Object.keys(KEYWORD_CLASS_MAP);
 
     const patternParts: string[] = [];
-    if (escapedNames.length > 0) {
-      patternParts.push(escapedNames.join("|"));
+    const namePatterns = buildWholeWordPatterns(rawNames);
+    if (namePatterns.length > 0) {
+      patternParts.push(...namePatterns);
     }
-    if (roleWords.length > 0) {
-      patternParts.push(roleWords.map((word) => escapeRegExp(word)).join("|"));
+    const rolePatterns = buildWholeWordPatterns(roleWords);
+    if (rolePatterns.length > 0) {
+      patternParts.push(...rolePatterns);
     }
-    if (keywordWords.length > 0) {
-      patternParts.push(keywordWords.map((word) => escapeRegExp(word)).join("|"));
+    const keywordPatterns = buildWholeWordPatterns(keywordWords);
+    if (keywordPatterns.length > 0) {
+      patternParts.push(...keywordPatterns);
     }
 
-    const combined = patternParts.filter(Boolean).join("|");
-    const regex = combined ? new RegExp(`(${combined})`, "gi") : null;
+  const combined = Array.from(new Set(patternParts.filter(Boolean))).join("|");
+    const regex = combined ? new RegExp(`(${combined})`, "giu") : null;
 
     return { playerNameMap: map, highlightRegex: regex };
   }, [players]);

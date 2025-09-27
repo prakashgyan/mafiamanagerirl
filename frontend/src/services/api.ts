@@ -41,8 +41,32 @@ export type GameDetail = GameSummary & {
   logs: LogEntry[];
 };
 
-const DEFAULT_API_BASE = "https://mafiadeskapi.prakashgyan.dev";
-const API_BASE = (import.meta.env.VITE_API_BASE ?? DEFAULT_API_BASE).replace(/\/+$/, "");
+const API_FALLBACKS = {
+  development: "http://localhost:8000",
+  production: "https://mafiadeskapi.prakashgyan.dev",
+} as const;
+
+const resolveApiBase = () => {
+  const fromEnv = import.meta.env.VITE_API_BASE?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  if (import.meta.env.DEV) {
+    return API_FALLBACKS.development;
+  }
+
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin.toLowerCase();
+    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      return API_FALLBACKS.development;
+    }
+  }
+
+  return API_FALLBACKS.production;
+};
+
+const API_BASE = resolveApiBase().replace(/\/+$/, "");
 
 const buildUrl = (path: string) => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
