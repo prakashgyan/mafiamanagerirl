@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     secret_key: str = "supersecretkeychange"  # override in .env
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
-    cors_origins: List[str] | str = ["http://localhost:5173"]
+    cors_origins: List[str] | str = [
+        "http://localhost:5173",
+        "https://mafiadesk.prakashgyan.dev",
+    ]
 
     @field_validator("cors_origins")
     @classmethod
