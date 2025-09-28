@@ -10,6 +10,7 @@ import NewGamePage from "./pages/NewGamePage";
 import ProfileHomePage from "./pages/ProfileHomePage";
 import PublicViewPage from "./pages/PublicViewPage";
 import FriendsPage from "./pages/FriendsPage";
+import KoFiWidgetManager from "./components/KoFiWidgetManager";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -34,7 +35,9 @@ const App = () => {
   const { user } = useAuth();
 
   return (
-    <Routes>
+    <>
+      <KoFiWidgetManager />
+      <Routes>
       <Route path="/" element={user ? <Navigate to="/profile" replace /> : <AuthPage />} />
       <Route
         path="/profile"
@@ -101,7 +104,8 @@ const App = () => {
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </>
   );
 };
 
