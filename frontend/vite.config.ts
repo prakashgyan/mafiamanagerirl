@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "https://mafiadeskapi.prakashgyan.dev",
+        target: "https://api.mafiadesk.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, "")
       }

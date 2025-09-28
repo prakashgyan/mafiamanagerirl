@@ -43,7 +43,7 @@ export type GameDetail = GameSummary & {
 
 const API_FALLBACKS = {
   development: "http://localhost:8000",
-  production: "https://mafiadeskapi.prakashgyan.dev",
+  production: "https://api.mafiadesk.com",
 } as const;
 
 const resolveApiBase = () => {

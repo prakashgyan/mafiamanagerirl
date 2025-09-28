@@ -55,7 +55,7 @@ export const useGameSocket = (gameId: number | null, options: Options = {}) => {
     }
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const defaultWsBase = "wss://mafiadeskapi.prakashgyan.dev";
+    const defaultWsBase = "wss://api.mafiadesk.com";
     const rawWsBase = import.meta.env.VITE_WS_BASE ?? defaultWsBase;
     const wsBase = (rawWsBase || `${protocol}://${window.location.host}`).replace(/\/+$/, "");
     const socket = new WebSocket(`${wsBase}/ws/game/${gameId}`);
