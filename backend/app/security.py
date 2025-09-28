@@ -94,10 +94,12 @@ def set_auth_cookie(response: Response, token: str, request: Request | None = No
     )
 
 
-def clear_auth_cookie(response: Response) -> None:
-    cookie_settings = _cookie_settings()
+def clear_auth_cookie(response: Response, request: Request | None = None) -> None:
+    cookie_settings = _cookie_settings(request=request)
     response.delete_cookie(
         AUTH_COOKIE_NAME,
         path=cookie_settings.get("path", "/"),
         domain=cookie_settings.get("domain"),
+        secure=cookie_settings.get("secure"),
+        samesite=cookie_settings.get("samesite"),
     )

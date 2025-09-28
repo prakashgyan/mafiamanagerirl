@@ -53,10 +53,10 @@ def login(
 
 
 @router.post("/logout")
-def logout(response: Response) -> Response:
+def logout(response: Response, request: Request) -> Response:
     from ..security import clear_auth_cookie
 
-    clear_auth_cookie(response)
+    clear_auth_cookie(response, request=request)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
