@@ -1,2 +1,5 @@
-/index.html   /index.html   200
-/*            /index.html   200
+/profile           /index.html   200
+/friends           /index.html   200
+/games/history     /index.html   200
+/games/new         /index.html   200
+/games/*           /index.html   200
