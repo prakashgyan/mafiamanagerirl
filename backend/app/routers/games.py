@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -224,7 +224,7 @@ def game_action(
             round=game.current_round,
             phase=game.current_phase,
             message=message,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
     )
 
@@ -239,7 +239,7 @@ def game_action(
                     round=game.current_round,
                     phase=game.current_phase,
                     message=f"Game ended. {winner} win!",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                 )
             )
 
@@ -276,7 +276,7 @@ def change_phase(
             round=game.current_round,
             phase=game.current_phase,
             message=f"Phase switched to {payload.phase.value.capitalize()} {game.current_round}",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
     )
 
@@ -308,7 +308,7 @@ def finish_game(
             round=game.current_round,
             phase=game.current_phase,
             message=f"Game finished manually. Winner: {payload.winning_team}",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
     )
 
@@ -339,7 +339,7 @@ def sync_night_events(
             round=game.current_round,
             phase=game.current_phase,
             message="Night events synced to public view.",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
     )
 

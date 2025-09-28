@@ -47,6 +47,20 @@ def test_full_flow(test_client: TestClient) -> None:
     assert resp.status_code == 201
     assert resp.json()["username"] == "host"
 
+    # Ensure the authenticated session is active
+    resp = test_client.get("/auth/me")
+    assert resp.status_code == 200
+
+    # Logging out should clear the cookie so future requests are unauthorized
+    resp = test_client.post("/auth/logout")
+    assert resp.status_code == 204
+
+    resp = test_client.get("/auth/me")
+    assert resp.status_code == 401
+
+    resp = test_client.post("/auth/login", json={"username": "host", "password": "password123"})
+    assert resp.status_code == 200
+
     resp = test_client.post("/friends/", json={"name": "Alice", "description": "Strategist"})
     assert resp.status_code == 201
 

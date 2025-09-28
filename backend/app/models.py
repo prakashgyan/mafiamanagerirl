@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 class GameStatus(str, enum.Enum):
@@ -78,6 +82,6 @@ class Log(Base):
     round: Mapped[int] = mapped_column(Integer, nullable=False)
     phase: Mapped[GamePhase] = mapped_column(Enum(GamePhase), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False, index=True)
 
     game: Mapped[Game] = relationship(back_populates="logs")
