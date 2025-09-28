@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from .. import schemas
@@ -15,7 +15,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=schemas.UserRead, status_code=status.HTTP_201_CREATED)
-def signup(payload: schemas.UserCreate, response: Response, db: Session = Depends(get_db)) -> schemas.UserRead:
+def signup(
+    payload: schemas.UserCreate,
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> schemas.UserRead:
     existing = db.query(User).filter(User.username == payload.username).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
@@ -26,19 +31,24 @@ def signup(payload: schemas.UserCreate, response: Response, db: Session = Depend
     db.refresh(user)
 
     token = create_access_token({"sub": user.id})
-    set_auth_cookie(response, token)
+    set_auth_cookie(response, token, request=request)
 
     return schemas.UserRead.model_validate(user)
 
 
 @router.post("/login", response_model=schemas.UserRead)
-def login(payload: schemas.LoginRequest, response: Response, db: Session = Depends(get_db)) -> schemas.UserRead:
+def login(
+    payload: schemas.LoginRequest,
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> schemas.UserRead:
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_access_token({"sub": user.id}, expires_delta=timedelta(minutes=60 * 24))
-    set_auth_cookie(response, token)
+    set_auth_cookie(response, token, request=request)
     return schemas.UserRead.model_validate(user)
 
 

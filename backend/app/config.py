@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import List
+from typing import List, Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,6 +21,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:4173",
         "https://mafiadesk.com",
     ]
+    environment: Literal["development", "staging", "production", "test"] = "development"
+    auth_cookie_domain: str | None = None
+    auth_cookie_path: str = "/"
+    auth_cookie_secure: bool | None = None
+    auth_cookie_samesite: Literal["lax", "strict", "none"] | None = None
 
     @field_validator("cors_origins")
     @classmethod

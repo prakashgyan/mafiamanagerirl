@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Dict
 
 import bcrypt
-from fastapi import Response
+from fastapi import Request, Response
 from jose import JWTError, jwt
 
 from .config import get_settings
@@ -48,15 +48,56 @@ def decode_token(token: str) -> Dict[str, Any] | None:
     return payload
 
 
-def set_auth_cookie(response: Response, token: str) -> None:
+def _cookie_settings(request: Request | None = None) -> dict[str, Any]:
+    """Resolve cookie configuration based on settings and incoming request."""
+
+    if settings.auth_cookie_samesite is not None:
+        samesite = settings.auth_cookie_samesite.lower()
+    elif settings.environment in {"production", "staging"}:
+        samesite = "none"
+    elif request and request.url.scheme == "https":
+        samesite = "none"
+    else:
+        samesite = "lax"
+
+    secure: bool
+    if settings.auth_cookie_secure is not None:
+        secure = settings.auth_cookie_secure
+    elif request:
+        secure = request.url.scheme == "https"
+    else:
+        secure = settings.environment in {"production", "staging"}
+
+    if samesite == "none" and not secure:
+        secure = True
+
+    cookie_settings: dict[str, Any] = {
+        "httponly": True,
+        "samesite": samesite,
+        "secure": secure,
+        "max_age": settings.access_token_expire_minutes * 60,
+        "path": settings.auth_cookie_path or "/",
+    }
+
+    if settings.auth_cookie_domain:
+        cookie_settings["domain"] = settings.auth_cookie_domain
+
+    return cookie_settings
+
+
+def set_auth_cookie(response: Response, token: str, request: Request | None = None) -> None:
+    cookie_settings = _cookie_settings(request=request)
     response.set_cookie(
         key=AUTH_COOKIE_NAME,
         value=token,
-        httponly=True,
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60,
+        **cookie_settings,
     )
 
 
 def clear_auth_cookie(response: Response) -> None:
-    response.delete_cookie(AUTH_COOKIE_NAME)
+    cookie_settings = _cookie_settings()
+    response.delete_cookie(
+        AUTH_COOKIE_NAME,
+        path=cookie_settings.get("path", "/"),
+        domain=cookie_settings.get("domain"),
+    )
