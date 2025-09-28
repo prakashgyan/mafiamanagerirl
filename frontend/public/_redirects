@@ -1,5 +1,8 @@
-/profile           /index.html   200
-/friends           /index.html   200
-/games/history     /index.html   200
-/games/new         /index.html   200
-/games/*           /index.html   200
+/profile              /index.html   200
+/friends              /index.html   200
+/games/history        /index.html   200
+/games/new            /index.html   200
+/games/*/assign       /index.html   200
+/games/*/manage       /index.html   200
+/games/*/public       /index.html   200
+/games/*/over         /index.html   200
