@@ -74,10 +74,8 @@ class FirestoreDataStore:
 
     def list_friends(self, user_id: int) -> List[Friend]:
         friends_ref = self.client.collection(FRIENDS_COLLECTION)
-        docs = friends_ref.where("user_id", "==", user_id).stream()
-        friends = [self._doc_to_friend(doc) for doc in docs]
-        friends.sort(key=lambda friend: friend.name.lower())
-        return friends
+        docs = friends_ref.where("user_id", "==", user_id).order_by("name").stream()
+        return [self._doc_to_friend(doc) for doc in docs]
 
     def create_friend(self, user_id: int, *, name: str, description: str | None, image: str | None) -> Friend:
         friend_id = self._next_id(FRIENDS_COLLECTION)
@@ -162,10 +160,8 @@ class FirestoreDataStore:
         games_ref = self.client.collection(GAMES_COLLECTION).where("host_id", "==", host_id)
         if status_filter is not None:
             games_ref = games_ref.where("status", "==", status_filter.value)
-        docs = games_ref.stream()
-        games = [self._doc_to_game(doc) for doc in docs]
-        games.sort(key=lambda g: g.id, reverse=True)
-        return games
+        docs = games_ref.order_by("id", direction=firestore.Query.DESCENDING).stream()
+        return [self._doc_to_game(doc) for doc in docs]
 
     def add_player(
         self,
@@ -215,11 +211,10 @@ class FirestoreDataStore:
         docs = (
             self.client.collection(PLAYERS_COLLECTION)
             .where("game_id", "==", game_id)
+            .order_by("id")
             .stream()
         )
-        players = [self._doc_to_player(doc) for doc in docs]
-        players.sort(key=lambda player: player.id)
-        return players
+        return [self._doc_to_player(doc) for doc in docs]
 
     def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime) -> Log:
         log_id = self._next_id(LOGS_COLLECTION)
@@ -238,11 +233,10 @@ class FirestoreDataStore:
         docs = (
             self.client.collection(LOGS_COLLECTION)
             .where("game_id", "==", game_id)
+            .order_by("timestamp")
             .stream()
         )
-        logs = [self._doc_to_log(doc) for doc in docs]
-        logs.sort(key=lambda log: log.timestamp)
-        return logs
+        return [self._doc_to_log(doc) for doc in docs]
 
     def get_game_bundle(self, game_id: int) -> GameAggregate | None:
         game = self.get_game(game_id)
@@ -328,8 +322,10 @@ class FirestoreDataStore:
         timestamp = data.get("timestamp")
         if isinstance(timestamp, datetime):
             ts = timestamp
-        else:
+        elif isinstance(timestamp, str):
             ts = datetime.fromisoformat(timestamp)
+        else:
+            raise ValueError("Invalid log timestamp stored in Firestore")
         return Log(
             id=int(data["id"]),
             game_id=int(data["game_id"]),

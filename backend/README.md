@@ -40,6 +40,26 @@ EOF
 
 > Secrets such as `APP_SECRET_KEY` should be replaced before deploying. The default credentials path points at the repo-level `home-projects-access.json`; adjust it to match your environment or set `GOOGLE_APPLICATION_CREDENTIALS` directly.
 
+### Firestore composite indexes
+
+All production queries rely on Firestore composite indexes that are tracked in `backend/firestore.indexes.json`. Deploy them to your project before running the FastAPI service against a live Firestore instance:
+
+```bash
+cd backend
+gcloud firestore indexes composite create \
+  --database=mafiadesk \
+  --config=firestore.indexes.json \
+  --project="$APP_FIRESTORE_PROJECT_ID"
+```
+
+If you prefer the Firebase CLI, run the following once you have a matching `firebase.json` pointing at your project:
+
+```bash
+firebase deploy --only firestore:indexes
+```
+
+When using the Firestore emulator, copy the same file into your emulator config or load it with `gcloud beta emulators firestore start --import`.
+
 ## Running the server
 
 Start the API with live reload on port 8000:
