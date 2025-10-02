@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from .models import Game, Player
+from .models import GameAggregate, Player
 
 MAFIA_ROLES = {"Mafia"}
 GOOD_ROLES = {"Villager", "Doctor", "Detective", "Jester"}
@@ -31,7 +31,7 @@ def resolve_vote_elimination(player: Player) -> str | None:
     return None
 
 
-def determine_winner(game: Game) -> str | None:
+def determine_winner(game: GameAggregate) -> str | None:
     mafia_alive = count_mafia(game.players)
     others_alive = count_non_mafia(game.players)
 

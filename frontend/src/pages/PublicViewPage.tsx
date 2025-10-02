@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useGameSocket } from "../hooks/useGameSocket";
 import { api, GameDetail, GamePhase, GameStatus } from "../services/api";
 import { useOptionalAuth } from "../context/AuthContext";
+import PlayerAvatar from "../components/PlayerAvatar";
 
 const PublicViewPage = () => {
   const { gameId } = useParams();
@@ -42,6 +43,8 @@ const PublicViewPage = () => {
             name: player.name,
             role: player.role,
             is_alive: player.is_alive,
+            avatar: player.avatar,
+            friend_id: player.friend_id ?? null,
           })) ?? [],
         logs:
           message.logs?.map((log) => ({
@@ -149,9 +152,10 @@ const PublicViewPage = () => {
               activePlayers.map((player) => (
                 <div
                   key={player.id}
-                  className="rounded-3xl border border-emerald-400/40 bg-emerald-900/60 px-6 py-6 text-center text-2xl font-semibold text-emerald-50 shadow-lg shadow-emerald-900/30 transition-transform duration-300 hover:scale-[1.02] hover:shadow-emerald-700/50"
+                  className="flex flex-col items-center gap-3 rounded-3xl border border-emerald-400/40 bg-emerald-900/60 px-6 py-6 text-center text-emerald-50 shadow-lg shadow-emerald-900/30 transition-transform duration-300 hover:scale-[1.02] hover:shadow-emerald-700/50"
                 >
-                  {player.name}
+                  <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="lg" className="border-emerald-300/40 bg-emerald-800/40" />
+                  <span className="text-2xl font-semibold">{player.name}</span>
                 </div>
               ))
             )}
@@ -169,9 +173,10 @@ const PublicViewPage = () => {
               inactivePlayers.map((player) => (
                 <div
                   key={player.id}
-                  className="rounded-3xl border border-rose-400/40 bg-rose-900/60 px-6 py-6 text-center text-2xl font-semibold text-rose-100 shadow-lg shadow-rose-900/30 transition-transform duration-300 hover:scale-[1.02] hover:shadow-rose-700/50"
+                  className="flex flex-col items-center gap-3 rounded-3xl border border-rose-400/40 bg-rose-900/60 px-6 py-6 text-center text-rose-100 shadow-lg shadow-rose-900/30 transition-transform duration-300 hover:scale-[1.02] hover:shadow-rose-700/50"
                 >
-                  {player.name}
+                  <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="lg" className="border-rose-300/40 bg-rose-800/40" />
+                  <span className="text-2xl font-semibold">{player.name}</span>
                 </div>
               ))
             )}

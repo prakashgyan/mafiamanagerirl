@@ -1,9 +1,10 @@
 import confetti from "canvas-confetti";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import LogsSection from "../components/LogTimeline";
 import { api, GameDetail } from "../services/api";
+import PlayerAvatar from "../components/PlayerAvatar";
 
 const GameOverPage = () => {
   const { gameId } = useParams();
@@ -94,9 +95,13 @@ const GameOverPage = () => {
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-4">
-              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+              <Link
+                to="/"
+                aria-label="Go to homepage"
+                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
+              >
                 MafiaDesk
-              </span>
+              </Link>
               <div className="space-y-2">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Game over summary</h1>
                 <p className="text-sm text-slate-300">
@@ -152,17 +157,22 @@ const GameOverPage = () => {
                 return (
                   <div
                     key={player.id}
-                    className={`rounded-2xl border px-4 py-4 shadow-md shadow-black/20 transition ${
+                    className={`flex items-center gap-4 rounded-2xl border px-4 py-4 shadow-md shadow-black/20 transition ${
                       alive
                         ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-100"
                         : "border-slate-800 bg-slate-950/70 text-slate-400"
                     }`}
                   >
-                    <p className="text-base font-semibold text-white">
-                      {player.name}
-                      {!alive && <span className="ml-2 text-xs font-normal uppercase tracking-wide text-rose-200">Eliminated</span>}
-                    </p>
-                    <p className="mt-1 text-xs uppercase tracking-wide text-slate-300">{player.role ?? "Unknown role"}</p>
+                    <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
+                    <div>
+                      <p className="text-base font-semibold text-white">
+                        {player.name}
+                        {!alive && (
+                          <span className="ml-2 text-xs font-normal uppercase tracking-wide text-rose-200">Eliminated</span>
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-wide text-slate-300">{player.role ?? "Unknown role"}</p>
+                    </div>
                   </div>
                 );
               })}

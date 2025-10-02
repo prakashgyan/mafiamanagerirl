@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -39,9 +39,13 @@ const AuthPage = () => {
         <div className="grid gap-10 p-8 sm:p-12 lg:grid-cols-[1.1fr_1fr]">
           <section className="flex flex-col justify-center gap-8 text-left">
             <div className="space-y-4">
-              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+              <Link
+                to="/"
+                aria-label="Go to homepage"
+                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
+              >
                 MafiaDesk
-              </span>
+              </Link>
               <h1 className="text-4xl font-semibold text-white sm:text-5xl">Your Mafia game, organized</h1>
               <p className="max-w-xl text-base leading-relaxed text-slate-300">
                 Run unforgettable Mafia nights without juggling notes or losing the thread. MafiaDesk keeps

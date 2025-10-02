@@ -7,7 +7,14 @@ export type GameSocketMessage = {
   phase: string;
   round: number;
   winning_team?: string | null;
-  players?: Array<{ id: number; name: string; role?: string | null; is_alive: boolean }>;
+  players?: Array<{
+    id: number;
+    name: string;
+    role?: string | null;
+    is_alive: boolean;
+    avatar?: string | null;
+    friend_id?: number | null;
+  }>;
   logs?: Array<{ id: number; round: number; phase: string; message: string; timestamp: string }>;
 };
 

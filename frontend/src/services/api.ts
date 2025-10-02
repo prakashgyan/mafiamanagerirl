@@ -15,6 +15,8 @@ export type Player = {
   name: string;
   role?: string | null;
   is_alive: boolean;
+  avatar?: string | null;
+  friend_id?: number | null;
 };
 
 export type LogEntry = {
@@ -39,6 +41,12 @@ export type GameSummary = {
 export type GameDetail = GameSummary & {
   players: Player[];
   logs: LogEntry[];
+};
+
+export type CreateGamePlayer = {
+  name: string;
+  avatar?: string | null;
+  friend_id?: number | null;
 };
 
 const API_FALLBACKS = {
@@ -109,7 +117,7 @@ export const api = {
   me: () => apiFetch<User>("/auth/me"),
 
   listFriends: () => apiFetch<Friend[]>("/friends/"),
-  createFriend: (payload: { name: string; description?: string }) =>
+  createFriend: (payload: { name: string; description?: string; image?: string | null }) =>
     apiFetch<Friend>("/friends/", { method: "POST", body: JSON.stringify(payload) }),
   deleteFriend: (friendId: number) =>
     apiFetch<void>(`/friends/${friendId}`, { method: "DELETE" }),
@@ -117,8 +125,8 @@ export const api = {
   listGames: (status?: GameStatus) =>
     apiFetch<GameSummary[]>(status ? `/games/?status_filter=${status}` : "/games/"),
   getGame: (id: number) => apiFetch<GameDetail>(`/games/${id}`),
-  createGame: (playerNames: string[]) =>
-    apiFetch<GameDetail>("/games/new", { method: "POST", body: JSON.stringify({ player_names: playerNames }) }),
+  createGame: (players: CreateGamePlayer[]) =>
+    apiFetch<GameDetail>("/games/new", { method: "POST", body: JSON.stringify({ players }) }),
   assignRoles: (gameId: number, assignments: { player_id: number; role: string }[]) =>
     apiFetch<GameDetail>(`/games/${gameId}/assign_roles`, {
       method: "POST",

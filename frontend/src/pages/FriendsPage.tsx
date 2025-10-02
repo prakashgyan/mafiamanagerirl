@@ -2,11 +2,14 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api, Friend } from "../services/api";
+import PlayerAvatar from "../components/PlayerAvatar";
+import { FRIEND_AVATAR_OPTIONS, getRandomFriendAvatar, normalizeAvatar } from "../utils/avatarOptions";
 
 const FriendsPage = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendName, setFriendName] = useState("");
   const [friendDescription, setFriendDescription] = useState("");
+  const [friendAvatar, setFriendAvatar] = useState<string>(getRandomFriendAvatar());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -31,6 +34,7 @@ const FriendsPage = () => {
   const resetForm = () => {
     setFriendName("");
     setFriendDescription("");
+    setFriendAvatar(getRandomFriendAvatar());
   };
 
   const handleAddFriend = async () => {
@@ -39,7 +43,11 @@ const FriendsPage = () => {
       setError(null);
       setSuccess(null);
       setSaving(true);
-      const created = await api.createFriend({ name: friendName.trim(), description: friendDescription.trim() });
+      const created = await api.createFriend({
+        name: friendName.trim(),
+        description: friendDescription.trim(),
+        image: normalizeAvatar(friendAvatar),
+      });
       setFriends((prev) => [created, ...prev]);
       setSuccess(`${created.name} added to your roster`);
       resetForm();
@@ -76,9 +84,13 @@ const FriendsPage = () => {
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+              <Link
+                to="/"
+                aria-label="Go to homepage"
+                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
+              >
                 MafiaDesk
-              </span>
+              </Link>
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Friends & Regulars</h1>
                 <p className="max-w-2xl text-base text-slate-300">
@@ -132,6 +144,42 @@ const FriendsPage = () => {
                     placeholder="Role preferences, dramatic flair, favourite twists..."
                   />
                 </label>
+                <div className="space-y-3 text-sm">
+                  <span className="block text-slate-300">Avatar</span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <PlayerAvatar value={friendAvatar} fallbackLabel={friendName} size="md" />
+                    <button
+                      type="button"
+                      onClick={() => setFriendAvatar(getRandomFriendAvatar())}
+                      className="rounded-full border border-slate-700/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-sky-400 hover:text-sky-200"
+                    >
+                      Randomize
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
+                    {FRIEND_AVATAR_OPTIONS.map((option) => {
+                      const isSelected = option === friendAvatar;
+                      return (
+                        <button
+                          type="button"
+                          key={option}
+                          onClick={() => setFriendAvatar(option)}
+                          className={`rounded-xl border px-2 py-2 text-lg transition ${
+                            isSelected
+                              ? "border-sky-400/70 bg-sky-500/15 text-sky-100"
+                              : "border-slate-800 bg-slate-900/80 text-slate-200 hover:border-sky-400/60"
+                          }`}
+                        >
+                          <span aria-hidden>{option}</span>
+                          <span className="sr-only">Select avatar {option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Pick a signature look or let us roll one for you. Avatars appear across games and logs.
+                  </p>
+                </div>
                 <p className="text-xs text-slate-500">
                   Tip: Use the notes to remember who loves playing detective or who thrives in night phases.
                 </p>
@@ -176,9 +224,12 @@ const FriendsPage = () => {
                     key={friend.id}
                     className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30 sm:flex-row sm:items-start sm:justify-between"
                   >
-                    <div>
-                      <p className="text-base font-semibold text-white">{friend.name}</p>
-                      {friend.description && <p className="mt-2 text-sm text-slate-400">{friend.description}</p>}
+                    <div className="flex items-start gap-3">
+                      <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="sm" className="flex-shrink-0" />
+                      <div>
+                        <p className="text-base font-semibold text-white">{friend.name}</p>
+                        {friend.description && <p className="mt-2 text-sm text-slate-400">{friend.description}</p>}
+                      </div>
                     </div>
                     <button
                       onClick={() => handleDeleteFriend(friend.id)}

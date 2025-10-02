@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import enum
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from .database import Base
+from typing import List
 
 
 def utc_now() -> datetime:
@@ -24,64 +21,79 @@ class GamePhase(str, enum.Enum):
     NIGHT = "night"
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    friends: Mapped[list["Friend"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
-    games: Mapped[list["Game"]] = relationship(back_populates="host")
+@dataclass(slots=True)
+class User:
+    id: int
+    username: str
+    password_hash: str
 
 
-class Friend(Base):
-    __tablename__ = "friends"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    image: Mapped[str | None] = mapped_column(String(255), nullable=True)
-
-    owner: Mapped[User] = relationship(back_populates="friends")
+@dataclass(slots=True)
+class Friend:
+    id: int
+    user_id: int
+    name: str
+    description: str | None = None
+    image: str | None = None
 
 
-class Game(Base):
-    __tablename__ = "games"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    host_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    status: Mapped[GameStatus] = mapped_column(Enum(GameStatus), default=GameStatus.PENDING, nullable=False)
-    current_phase: Mapped[GamePhase] = mapped_column(Enum(GamePhase), default=GamePhase.DAY, nullable=False)
-    current_round: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    winning_team: Mapped[str | None] = mapped_column(String(50), nullable=True)
-
-    host: Mapped[User] = relationship(back_populates="games")
-    players: Mapped[list["Player"]] = relationship(back_populates="game", cascade="all, delete-orphan")
-    logs: Mapped[list["Log"]] = relationship(back_populates="game", cascade="all, delete-orphan", order_by="Log.timestamp")
+@dataclass(slots=True)
+class Game:
+    id: int
+    host_id: int
+    status: GameStatus = GameStatus.PENDING
+    current_phase: GamePhase = GamePhase.DAY
+    current_round: int = 1
+    winning_team: str | None = None
 
 
-class Player(Base):
-    __tablename__ = "players"
+@dataclass(slots=True)
+class Player:
+    id: int
+    game_id: int
+    name: str
+    role: str | None = None
+    is_alive: bool = True
+    avatar: str | None = None
+    friend_id: int | None = None
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"), nullable=False)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    role: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    is_alive: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    game: Mapped[Game] = relationship(back_populates="players")
+@dataclass(slots=True)
+class Log:
+    id: int
+    game_id: int
+    round: int
+    phase: GamePhase
+    message: str
+    timestamp: datetime
 
 
-class Log(Base):
-    __tablename__ = "logs"
+@dataclass(slots=True)
+class GameAggregate:
+    game: Game
+    players: List[Player] = field(default_factory=list)
+    logs: List[Log] = field(default_factory=list)
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"), nullable=False)
-    round: Mapped[int] = mapped_column(Integer, nullable=False)
-    phase: Mapped[GamePhase] = mapped_column(Enum(GamePhase), nullable=False)
-    message: Mapped[str] = mapped_column(Text, nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False, index=True)
+    @property
+    def id(self) -> int:
+        return self.game.id
 
-    game: Mapped[Game] = relationship(back_populates="logs")
+    @property
+    def status(self) -> GameStatus:
+        return self.game.status
+
+    @property
+    def current_phase(self) -> GamePhase:
+        return self.game.current_phase
+
+    @property
+    def current_round(self) -> int:
+        return self.game.current_round
+
+    @property
+    def winning_team(self) -> str | None:
+        return self.game.winning_team
+
+    @property
+    def host_id(self) -> int:
+        return self.game.host_id

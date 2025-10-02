@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import type { LogEntry, Player } from "../services/api";
+import PlayerAvatar from "./PlayerAvatar";
 
 const ROLE_WORD_CLASS_MAP: Record<string, string> = {
   mafia: "text-rose-300 font-semibold",
@@ -102,8 +103,9 @@ const InlinePlayerChip = ({ player }: { player: Player }) => {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${style.border} ${style.background} ${style.text} mr-1`}
+      className={`inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-semibold ${style.border} ${style.background} ${style.text} mr-1`}
     >
+      <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="xs" />
       <span>{player.name}</span>
       {player.role && (
         <span className="text-[10px] uppercase tracking-wide text-slate-200/80">{player.role}</span>

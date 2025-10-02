@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import type { ConnectDropTarget } from "react-dnd";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
 import LogsSection from "../components/LogTimeline";
 import { api, GameDetail, GamePhase, Player } from "../services/api";
 import { getPlayerCardClasses, getRoleLabelClass } from "../utils/playerStyles";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
+import PlayerAvatar from "../components/PlayerAvatar";
 
 const DND_TYPE = "PLAYER";
 
@@ -35,16 +36,19 @@ const DraggablePlayerCard = ({ player }: DraggablePlayerCardProps) => {
   return (
     <div
       ref={dragRef}
-      className={`rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm shadow-sm shadow-black/30 transition ${
+      className={`flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm shadow-sm shadow-black/30 transition ${
         player.is_alive ? "cursor-grab hover:border-sky-400/60" : "cursor-not-allowed opacity-70"
       } ${isDragging ? "opacity-60" : ""} ${getPlayerCardClasses(player)}`}
       aria-disabled={!player.is_alive}
     >
-      <p className="font-semibold text-white">{player.name}</p>
-      <p className={`text-xs uppercase tracking-wide ${getRoleLabelClass(player)}`}>
-        {player.role ?? "Unassigned"}
-      </p>
-      {!player.is_alive && <p className="text-[0.65rem] text-slate-400">Eliminated</p>}
+      <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" className="mt-1" />
+      <div className="flex flex-col gap-1">
+        <p className="font-semibold text-white">{player.name}</p>
+        <p className={`text-xs uppercase tracking-wide ${getRoleLabelClass(player)}`}>
+          {player.role ?? "Unassigned"}
+        </p>
+        {!player.is_alive && <p className="text-[0.65rem] text-slate-400">Eliminated</p>}
+      </div>
     </div>
   );
 };
@@ -425,8 +429,12 @@ const DashboardPageContent = () => {
           )}
         </div>
         {selectedPlayer ? (
-          <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
-            {selectedPlayer.name}
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
+            <PlayerAvatar value={selectedPlayer.avatar} fallbackLabel={selectedPlayer.name} size="sm" />
+            <div className="flex flex-col">
+              <span className="font-semibold">{selectedPlayer.name}</span>
+              <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">{selectedPlayer.role ?? "Unassigned"}</span>
+            </div>
           </div>
         ) : (
           <p className="text-sm text-slate-400">{placeholder}</p>
@@ -485,8 +493,12 @@ const DashboardPageContent = () => {
           )}
         </div>
         {selectedPlayer && isEnabled ? (
-          <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
-            {selectedPlayer.name}
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
+            <PlayerAvatar value={selectedPlayer.avatar} fallbackLabel={selectedPlayer.name} size="sm" />
+            <div className="flex flex-col">
+              <span className="font-semibold">{selectedPlayer.name}</span>
+              <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">{selectedPlayer.role ?? "Unassigned"}</span>
+            </div>
           </div>
         ) : (
           <p className="text-sm text-slate-400">{placeholder}</p>
@@ -530,11 +542,13 @@ const DashboardPageContent = () => {
           <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-4">
-                <span
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${palette.badge}`}
+                <Link
+                  to="/"
+                  aria-label="Go to homepage"
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition hover:opacity-90 ${palette.badge}`}
                 >
                   MafiaDesk
-                </span>
+                </Link>
                 <div className="space-y-2">
                   <h1 className="text-3xl font-semibold text-white sm:text-4xl">Management dashboard</h1>
                   <p className="text-sm text-slate-300">

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .models import GamePhase, GameStatus
 
@@ -61,10 +61,14 @@ class PlayerBase(BaseModel):
     name: str
     role: Optional[str] = None
     is_alive: bool = True
+    avatar: Optional[str] = None
+    friend_id: Optional[int] = None
 
 
 class PlayerCreate(BaseModel):
     name: str
+    avatar: Optional[str] = None
+    friend_id: Optional[int] = None
 
 
 class PlayerUpdateRole(BaseModel):
@@ -97,6 +101,13 @@ class GameBase(BaseModel):
 
 class GameCreateRequest(BaseModel):
     player_names: List[str] = Field(default_factory=list)
+    players: List[PlayerCreate] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def ensure_players_or_names(self) -> "GameCreateRequest":
+        if not self.players and not self.player_names:
+            raise ValueError("Provide at least one player")
+        return self
 
 
 class GameRead(GameBase):

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
 
-from .database import get_db
+from .database import get_datastore
 from .models import User
 from .security import AUTH_COOKIE_NAME, decode_token
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def get_current_user(request: Request, datastore = Depends(get_datastore)) -> User:
     token = request.cookies.get(AUTH_COOKIE_NAME)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -22,7 +21,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication") from exc
 
-    user = db.get(User, user_id)
+    user = datastore.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 

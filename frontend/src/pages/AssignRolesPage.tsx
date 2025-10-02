@@ -1,9 +1,10 @@
 import { FC, useEffect, useMemo, useState } from "react";
 import { useDrag, useDrop, DragSourceMonitor, DropTargetMonitor } from "react-dnd";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { api, GameDetail, Player } from "../services/api";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
+import PlayerAvatar from "../components/PlayerAvatar";
 
 const ROLE_KEYS = ["Mafia", "Detective", "Doctor", "Villager", "Jester"] as const;
 
@@ -97,13 +98,19 @@ type AssignedPlayerProps = {
 };
 
 const AssignedPlayerCard: FC<AssignedPlayerProps> = ({ player, onRemove }: AssignedPlayerProps) => (
-  <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2">
-    <span className="text-sm text-slate-100">{player.name}</span>
+  <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2">
+    <div className="flex items-center gap-3">
+      <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
+      <div className="flex flex-col">
+        <span className="text-sm font-semibold text-slate-100">{player.name}</span>
+        <span className="text-[0.65rem] uppercase tracking-wide text-slate-500">{player.role ?? "Unassigned"}</span>
+      </div>
+    </div>
     <button
       onClick={onRemove}
       className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-rose-200 transition hover:bg-rose-500/20"
     >
-      Remove
+      X
     </button>
   </div>
 );
@@ -127,11 +134,15 @@ const PlayerCard = ({ player }: PlayerCardProps) => {
   return (
     <div
       ref={dragRef}
-      className={`rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm shadow-black/20 transition ${
+      className={`flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm shadow-black/20 transition ${
         isDragging ? "opacity-40" : "opacity-100"
       }`}
     >
-      {player.name}
+      <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
+      <div className="flex flex-col">
+        <span className="font-semibold">{player.name}</span>
+        <span className="text-[0.65rem] uppercase tracking-wide text-slate-500">{player.role ?? "Unassigned"}</span>
+      </div>
     </div>
   );
 };
@@ -284,9 +295,13 @@ const AssignRolesPage = () => {
           <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-4">
-                <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+                <Link
+                  to="/"
+                  aria-label="Go to homepage"
+                  className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
+                >
                   MafiaDesk
-                </span>
+                </Link>
                 <div className="space-y-2">
                   <h1 className="text-3xl font-semibold text-white sm:text-4xl">Assign roles with confidence</h1>
                   <p className="max-w-2xl text-base text-slate-300">

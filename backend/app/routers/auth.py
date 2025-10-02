@@ -3,10 +3,9 @@ from __future__ import annotations
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy.orm import Session
 
 from .. import schemas
-from ..database import get_db
+from ..database import get_datastore
 from ..deps import get_current_user
 from ..models import User
 from ..security import create_access_token, hash_password, set_auth_cookie, verify_password
@@ -19,16 +18,13 @@ def signup(
     payload: schemas.UserCreate,
     response: Response,
     request: Request,
-    db: Session = Depends(get_db),
+    datastore = Depends(get_datastore),
 ) -> schemas.UserRead:
-    existing = db.query(User).filter(User.username == payload.username).first()
+    existing = datastore.get_user_by_username(payload.username)
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
 
-    user = User(username=payload.username, password_hash=hash_password(payload.password))
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    user = datastore.create_user(payload.username, hash_password(payload.password))
 
     token = create_access_token({"sub": user.id})
     set_auth_cookie(response, token, request=request)
@@ -41,9 +37,9 @@ def login(
     payload: schemas.LoginRequest,
     response: Response,
     request: Request,
-    db: Session = Depends(get_db),
+    datastore = Depends(get_datastore),
 ) -> schemas.UserRead:
-    user = db.query(User).filter(User.username == payload.username).first()
+    user = datastore.get_user_by_username(payload.username)
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 

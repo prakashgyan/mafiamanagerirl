@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="APP_", extra="ignore")
 
-    database_url: str = "sqlite:///./mafia_manager.db"
+    database_url: str = "sqlite:///./mafiadesk.db"
     secret_key: str = "supersecretkeychange"  # override in .env
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     auth_cookie_path: str = "/"
     auth_cookie_secure: bool | None = None
     auth_cookie_samesite: Literal["lax", "strict", "none"] | None = None
+    firestore_project_id: str = "home-projects-425618"
+    firestore_database: str = "mafiadesk"
+    firestore_credentials_file: str = "home-projects-access.json"
+    firestore_emulator_host: str | None = None
 
     @field_validator("cors_origins")
     @classmethod

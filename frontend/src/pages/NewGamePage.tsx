@@ -1,7 +1,9 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-import { api, Friend } from "../services/api";
+import PlayerAvatar from "../components/PlayerAvatar";
+import { api, CreateGamePlayer, Friend } from "../services/api";
+import { getRandomAnimalAvatar, normalizeAvatar } from "../utils/avatarOptions";
 
 const ROLE_KEYS = ["Mafia", "Detective", "Doctor", "Villager", "Jester"] as const;
 
@@ -21,6 +23,7 @@ const NewGamePage = () => {
   const [selectedFriendIds, setSelectedFriendIds] = useState<number[]>([]);
   const [customName, setCustomName] = useState("");
   const [customPlayers, setCustomPlayers] = useState<string[]>([]);
+  const [customPlayerAvatars, setCustomPlayerAvatars] = useState<Record<string, string>>({});
   const [roleCounts, setRoleCounts] = useState<RoleCounts>(defaultRoleCounts);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +76,11 @@ const NewGamePage = () => {
 
   const removeCustomPlayer = (name: string) => {
     setCustomPlayers((prev: string[]) => prev.filter((entry: string) => entry !== name));
+    setCustomPlayerAvatars((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   };
 
   const handleAddCustomPlayer = () => {
@@ -83,7 +91,12 @@ const NewGamePage = () => {
       return;
     }
     setCustomPlayers((prev: string[]) => [...prev, trimmed]);
+    setCustomPlayerAvatars((prev) => ({ ...prev, [trimmed]: getRandomAnimalAvatar() }));
     setCustomName("");
+  };
+
+  const rerollCustomAvatar = (name: string) => {
+    setCustomPlayerAvatars((prev) => ({ ...prev, [name]: getRandomAnimalAvatar() }));
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -100,14 +113,25 @@ const NewGamePage = () => {
       return;
     }
 
-    const friendNames = friends
-      .filter((friend: Friend) => selectedFriendIds.includes(friend.id))
-      .map((friend: Friend) => friend.name);
+    const playersPayload: CreateGamePlayer[] = [];
 
-    const playerNames = [...friendNames, ...customPlayers];
+    for (const friend of selectedFriends) {
+      playersPayload.push({
+        name: friend.name,
+        friend_id: friend.id,
+        avatar: normalizeAvatar(friend.image) ?? getRandomAnimalAvatar(),
+      });
+    }
+
+    for (const playerName of customPlayers) {
+      playersPayload.push({
+        name: playerName,
+        avatar: normalizeAvatar(customPlayerAvatars[playerName]) ?? getRandomAnimalAvatar(),
+      });
+    }
 
     try {
-      const game = await api.createGame(playerNames);
+      const game = await api.createGame(playersPayload);
       navigate(`/games/${game.id}/assign`, { state: { roleCounts } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create game");
@@ -136,9 +160,13 @@ const NewGamePage = () => {
         <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-4">
-              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+              <Link
+                to="/"
+                aria-label="Go to homepage"
+                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
+              >
                 MafiaDesk
-              </span>
+              </Link>
               <div className="space-y-2">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Spin up a fresh Mafia night</h1>
                 <p className="max-w-2xl text-base text-slate-300">
@@ -201,7 +229,10 @@ const NewGamePage = () => {
                             : "border-slate-800 bg-slate-900/70 hover:border-sky-400/60"
                         }`}
                       >
-                        <span className="text-sm font-semibold">{friend.name}</span>
+                        <div className="flex items-center gap-2">
+                          <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="sm" />
+                          <span className="text-sm font-semibold">{friend.name}</span>
+                        </div>
                         {friend.description && <span className="text-xs text-slate-300">{friend.description}</span>}
                         <span
                           className={`mt-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${
@@ -255,7 +286,8 @@ const NewGamePage = () => {
                         key={`friend-${friend.id}`}
                         className="group inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/15 px-3 py-1 text-xs font-medium text-sky-100"
                       >
-                        {friend.name}
+                        <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="xs" />
+                        <span>{friend.name}</span>
                         <button
                           type="button"
                           onClick={() => toggleFriend(friend.id)}
@@ -268,9 +300,17 @@ const NewGamePage = () => {
                     {customPlayers.map((player) => (
                       <span
                         key={`custom-${player}`}
-                        className="group inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100"
+                        className="group inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100"
                       >
-                        {player}
+                        <PlayerAvatar value={customPlayerAvatars[player]} fallbackLabel={player} size="xs" />
+                        <span>{player}</span>
+                        <button
+                          type="button"
+                          onClick={() => rerollCustomAvatar(player)}
+                          className="rounded-full bg-slate-900/60 px-1 text-[0.65rem] uppercase tracking-wide text-emerald-200 opacity-0 transition group-hover:opacity-100"
+                        >
+                          Reroll
+                        </button>
                         <button
                           type="button"
                           onClick={() => removeCustomPlayer(player)}

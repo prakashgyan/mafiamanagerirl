@@ -4,13 +4,10 @@ import logging
 
 from fastapi import Depends, FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 from starlette.websockets import WebSocketDisconnect
 
 from .config import get_settings
-from .database import Base, engine, get_db
-from .models import Game
+from .database import get_datastore
 from .router_registry import include_routers
 from .socket_manager import manager
 
@@ -30,7 +27,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup() -> None:
-    Base.metadata.create_all(bind=engine, checkfirst=True)
+    # Instantiate datastore early to surface configuration issues on boot
+    get_datastore()
 
 
 include_routers(app)
@@ -42,23 +40,30 @@ def healthcheck() -> dict[str, str]:
 
 
 @app.websocket("/ws/game/{game_id}")
-async def websocket_endpoint(websocket: WebSocket, game_id: int, db: Session = Depends(get_db)) -> None:
+async def websocket_endpoint(websocket: WebSocket, game_id: int, datastore = Depends(get_datastore)) -> None:
     await manager.connect(game_id, websocket)
     try:
-        game = db.query(Game).filter(Game.id == game_id).first()
-        if game:
+        bundle = datastore.get_game_bundle(game_id)
+        if bundle:
             await manager.broadcast(
                 game_id,
                 {
                     "event": "init",
-                    "game_id": game.id,
-                    "status": game.status.value,
-                    "phase": game.current_phase.value,
-                    "round": game.current_round,
-                    "winning_team": game.winning_team,
+                    "game_id": bundle.id,
+                    "status": bundle.status.value,
+                    "phase": bundle.current_phase.value,
+                    "round": bundle.current_round,
+                    "winning_team": bundle.winning_team,
                     "players": [
-                        {"id": player.id, "name": player.name, "role": player.role, "is_alive": player.is_alive}
-                        for player in game.players
+                        {
+                            "id": player.id,
+                            "name": player.name,
+                            "role": player.role,
+                            "is_alive": player.is_alive,
+                            "avatar": player.avatar,
+                            "friend_id": player.friend_id,
+                        }
+                        for player in bundle.players
                     ],
                     "logs": [
                         {
@@ -68,7 +73,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: int, db: Session = D
                             "message": log.message,
                             "timestamp": log.timestamp.isoformat(),
                         }
-                        for log in game.logs
+                        for log in bundle.logs
                     ],
                 },
             )

@@ -1,40 +1,25 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from app.database import Base, get_db
+from app.database import InMemoryDataStore, get_datastore
 from app.main import app
 
-TEST_DB_PATH = Path("test_mafia_manager.db")
-TEST_DATABASE_URL = f"sqlite:///{TEST_DB_PATH}"
-
-test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(bind=test_engine, autocommit=False, autoflush=False)
+test_store = InMemoryDataStore()
 
 
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def override_get_datastore() -> InMemoryDataStore:
+    return test_store
 
 
 def setup_module(module):  # noqa: D401 - pytest hook
-    Base.metadata.drop_all(bind=test_engine)
-    Base.metadata.create_all(bind=test_engine)
-    app.dependency_overrides[get_db] = override_get_db
+    test_store.reset()
+    app.dependency_overrides[get_datastore] = override_get_datastore
 
 
 def teardown_module(module):  # noqa: D401 - pytest hook
     app.dependency_overrides.clear()
-    if TEST_DB_PATH.exists():
-        TEST_DB_PATH.unlink()
+    test_store.reset()
 
 
 @pytest.fixture()
@@ -61,19 +46,37 @@ def test_full_flow(test_client: TestClient) -> None:
     resp = test_client.post("/auth/login", json={"username": "host", "password": "password123"})
     assert resp.status_code == 200
 
-    resp = test_client.post("/friends/", json={"name": "Alice", "description": "Strategist"})
+    resp = test_client.post(
+        "/friends/",
+        json={"name": "Alice", "description": "Strategist", "image": "🦊"},
+    )
     assert resp.status_code == 201
+    friend = resp.json()
+    alice_friend_id = friend["id"]
 
     resp = test_client.get("/friends/")
     assert resp.status_code == 200
     assert resp.json()[0]["name"] == "Alice"
 
-    resp = test_client.post("/games/new", json={"player_names": ["Alice", "Bob", "Cara", "Dylan"]})
+    resp = test_client.post(
+        "/games/new",
+        json={
+            "players": [
+                {"name": "Alice", "friend_id": alice_friend_id},
+                {"name": "Bob", "avatar": "🐻"},
+                {"name": "Cara", "avatar": "🦁"},
+                {"name": "Dylan", "avatar": "🐼"},
+            ]
+        },
+    )
     assert resp.status_code == 201
     game = resp.json()
     game_id = game["id"]
 
     players = {player["name"]: player["id"] for player in game["players"]}
+    alice_entry = next(player for player in game["players"] if player["name"] == "Alice")
+    assert alice_entry["avatar"] == "🦊"
+    assert alice_entry["friend_id"] == alice_friend_id
 
     assignments = [
         {"player_id": players["Alice"], "role": "Mafia"},

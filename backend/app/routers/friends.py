@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy.orm import Session
 
 from .. import schemas
-from ..database import get_db
+from ..database import get_datastore
 from ..deps import get_current_user
 from ..models import Friend, User
 
@@ -12,8 +11,8 @@ router = APIRouter(prefix="/friends", tags=["friends"])
 
 
 @router.get("/", response_model=list[schemas.FriendRead])
-def list_friends(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[schemas.FriendRead]:
-    friends = db.query(Friend).filter(Friend.user_id == current_user.id).order_by(Friend.name).all()
+def list_friends(current_user: User = Depends(get_current_user), datastore = Depends(get_datastore)) -> list[schemas.FriendRead]:
+    friends = datastore.list_friends(current_user.id)
     return [schemas.FriendRead.model_validate(friend) for friend in friends]
 
 
@@ -21,12 +20,14 @@ def list_friends(current_user: User = Depends(get_current_user), db: Session = D
 def create_friend(
     payload: schemas.FriendCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    datastore = Depends(get_datastore),
 ) -> schemas.FriendRead:
-    friend = Friend(user_id=current_user.id, **payload.model_dump())
-    db.add(friend)
-    db.commit()
-    db.refresh(friend)
+    friend = datastore.create_friend(
+        current_user.id,
+        name=payload.name,
+        description=payload.description,
+        image=payload.image,
+    )
     return schemas.FriendRead.model_validate(friend)
 
 
@@ -34,11 +35,9 @@ def create_friend(
 def delete_friend(
     friend_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    datastore = Depends(get_datastore),
 ) -> Response:
-    friend = db.query(Friend).filter(Friend.user_id == current_user.id, Friend.id == friend_id).first()
-    if not friend:
+    deleted = datastore.delete_friend(friend_id, current_user.id)
+    if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found")
-    db.delete(friend)
-    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

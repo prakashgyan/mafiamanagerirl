@@ -77,9 +77,13 @@ const GameHistoryPage = () => {
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+              <Link
+                to="/"
+                aria-label="Go to homepage"
+                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
+              >
                 MafiaDesk
-              </span>
+              </Link>
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Game History</h1>
                 <p className="max-w-2xl text-base text-slate-300">
