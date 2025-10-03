@@ -6,6 +6,73 @@ import { api, GameDetail, GamePhase, GameStatus } from "../services/api";
 import { useOptionalAuth } from "../context/AuthContext";
 import PlayerAvatar from "../components/PlayerAvatar";
 
+// Typewriter Component
+const TypewriterText = ({ text, isDay }: { text: string; isDay: boolean }) => {
+  const [displayText, setDisplayText] = useState(text);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const prevTextRef = useRef(text);
+  const timeoutRef = useRef<number>();
+  const intervalRef = useRef<number>();
+  
+  useEffect(() => {
+    // Only trigger animation if text actually changed
+    if (prevTextRef.current === text) return;
+    
+    const previousText = prevTextRef.current;
+    prevTextRef.current = text;
+    
+    // Clear any existing timers
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    
+    setIsAnimating(true);
+    
+    // Delete animation: remove characters one by one
+    let deleteIndex = previousText.length;
+    intervalRef.current = window.setInterval(() => {
+      if (deleteIndex > 0) {
+        setDisplayText(previousText.slice(0, deleteIndex - 1));
+        deleteIndex--;
+      } else {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        
+        // Small pause before typing new text
+        timeoutRef.current = window.setTimeout(() => {
+          // Type animation: add characters one by one
+          let typeIndex = 0;
+          intervalRef.current = window.setInterval(() => {
+            if (typeIndex <= text.length) {
+              setDisplayText(text.slice(0, typeIndex));
+              typeIndex++;
+            } else {
+              if (intervalRef.current) clearInterval(intervalRef.current);
+              setIsAnimating(false);
+            }
+          }, 120); // Typing speed
+        }, 300); // Pause between delete and type
+      }
+    }, 80); // Delete speed
+    
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [text]);
+  
+  return (
+    <div className={`text-5xl font-bold drop-shadow-2xl tracking-wide transition-all duration-[8000ms] ease-in-out ${
+      isDay ? 'text-yellow-100' : 'text-blue-100'
+    }`}>
+      <span className="inline-block">
+        {displayText}
+        <span className={`inline-block w-1 h-12 ml-2 bg-current transition-opacity duration-300 ${
+          isAnimating ? 'opacity-100 animate-blink-cursor' : 'opacity-0'
+        }`} />
+      </span>
+    </div>
+  );
+};
+
 // Animated Background Components
 const Stars = ({ isDay }: { isDay: boolean }) => {
   const stars = Array.from({ length: 100 }, (_, i) => ({
@@ -18,10 +85,10 @@ const Stars = ({ isDay }: { isDay: boolean }) => {
     twinkleDuration: Math.random() * 4 + 3, // 3-7 seconds for slower twinkling
   }));
 
-  if (isDay) return null;
-
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className={`absolute inset-0 overflow-hidden transition-opacity duration-[8000ms] ease-in-out ${
+      isDay ? 'opacity-0' : 'opacity-100'
+    }`}>
       {stars.map((star) => (
         <div
           key={star.id}
@@ -44,14 +111,31 @@ const Stars = ({ isDay }: { isDay: boolean }) => {
 };
 
 const Sun = ({ isDay }: { isDay: boolean }) => {
-  if (!isDay) return null;
-
   return (
-    <div className="absolute right-16 top-16 animate-pulse" style={{ animationDuration: "4s" }}>
-      <div className="relative">
-        {/* Sun body */}
-        <div className="h-24 w-24 rounded-full bg-gradient-radial from-yellow-200 via-yellow-400 to-orange-500 shadow-lg shadow-yellow-400/50">
-          <div className="h-full w-full rounded-full bg-gradient-to-br from-yellow-100/30 to-transparent" />
+    <div className="absolute top-16 right-16 w-0 h-0 pointer-events-none"> {/* Center point moved to top-right corner */}
+      <div 
+        className={`absolute -translate-x-1/2 -translate-y-1/2 ${
+          isDay 
+            ? 'animate-sun-rise' 
+            : 'animate-sun-set'
+        }`}
+        style={{ 
+          animationFillMode: 'forwards',
+          transformOrigin: 'center center',
+          // Initial position for sun-set (visible) or sun-rise (hidden)
+          transform: isDay 
+            ? 'rotate(-120deg) translateX(300px) rotate(120deg) scale(0.8)' 
+            : 'rotate(120deg) translateX(300px) rotate(-120deg) scale(1)',
+          opacity: isDay ? 0 : 1
+        }}
+      >
+        <div className="relative">
+          {/* Sun body */}
+          <div className={`h-24 w-24 rounded-full bg-gradient-radial from-yellow-200 via-yellow-400 to-orange-500 shadow-lg shadow-yellow-400/50 ${
+            isDay ? 'animate-pulse' : ''
+          }`} style={{ animationDuration: "4s" }}>
+            <div className="h-full w-full rounded-full bg-gradient-to-br from-yellow-100/30 to-transparent" />
+          </div>
         </div>
       </div>
     </div>
@@ -59,19 +143,34 @@ const Sun = ({ isDay }: { isDay: boolean }) => {
 };
 
 const Moon = ({ isDay }: { isDay: boolean }) => {
-  if (isDay) return null;
-
   return (
-    <div className="absolute right-20 top-20">
-      <div className="relative h-20 w-20">
-        {/* Moon glow */}
-        <div className="absolute -inset-4 rounded-full bg-blue-200/10 blur-xl animate-pulse" />
-        {/* Moon body */}
-        <div className="relative h-full w-full rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 shadow-lg shadow-blue-200/30">
-          {/* Moon craters */}
-          <div className="absolute left-3 top-2 h-2 w-2 rounded-full bg-slate-400/50" />
-          <div className="absolute right-4 top-4 h-1 w-1 rounded-full bg-slate-400/50" />
-          <div className="absolute bottom-3 left-5 h-1.5 w-1.5 rounded-full bg-slate-400/50" />
+    <div className="absolute top-16 right-16 w-0 h-0 pointer-events-none"> {/* Center point moved to top-right corner */}
+      <div 
+        className={`absolute -translate-x-1/2 -translate-y-1/2 ${
+          isDay 
+            ? 'animate-moon-set' 
+            : 'animate-moon-rise'
+        }`}
+        style={{ 
+          animationFillMode: 'forwards',
+          transformOrigin: 'center center',
+          // Initial position for moon-rise (hidden) or moon-set (visible)
+          transform: isDay 
+            ? 'rotate(120deg) translateX(250px) rotate(-120deg) scale(1)' 
+            : 'rotate(-120deg) translateX(250px) rotate(120deg) scale(0.8)',
+          opacity: isDay ? 1 : 0
+        }}
+      >
+        <div className="relative h-20 w-20">
+          {/* Moon glow */}
+          <div className="absolute -inset-4 rounded-full bg-blue-200/10 blur-xl animate-pulse" />
+          {/* Moon body */}
+          <div className="relative h-full w-full rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 shadow-lg shadow-blue-200/30">
+            {/* Moon craters */}
+            <div className="absolute left-3 top-2 h-2 w-2 rounded-full bg-slate-400/50" />
+            <div className="absolute right-4 top-4 h-1 w-1 rounded-full bg-slate-400/50" />
+            <div className="absolute bottom-3 left-5 h-1.5 w-1.5 rounded-full bg-slate-400/50" />
+          </div>
         </div>
       </div>
     </div>
@@ -124,11 +223,13 @@ const FloatingParticles = ({ isDay }: { isDay: boolean }) => {
   }));
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className={`absolute inset-0 overflow-hidden transition-all duration-[8000ms] ease-in-out ${
+      isDay ? 'opacity-60' : 'opacity-30'
+    }`}>
       {particles.map((particle) => (
         <div
           key={particle.id}
-          className={`absolute animate-bounce opacity-30 ${
+          className={`absolute animate-bounce transition-all duration-[8000ms] ease-in-out ${
             isDay ? 'bg-yellow-200' : 'bg-blue-200'
           } rounded-full blur-sm`}
           style={{
@@ -164,7 +265,7 @@ const PublicViewPage = () => {
     })();
   }, [gameId]);
 
-  useGameSocket(game ? game.id : Number(gameId ?? 0), {
+  useGameSocket(Number(gameId ?? 0), {
     enabled: Boolean(gameId),
     onMessage: (message) => {
       if (message.game_id !== Number(gameId)) return;
@@ -287,25 +388,32 @@ const PublicViewPage = () => {
   return (
     <div
       ref={containerRef}
-      className="min-h-screen w-full relative overflow-hidden transition-all duration-1000"
+      className="min-h-screen w-full relative overflow-hidden"
     >
-      {/* Dynamic Animated Background */}
-      <div 
-        className={`absolute inset-0 transition-all duration-2000 ${
-          isDay 
-            ? 'bg-gradient-to-br from-sky-300 via-blue-400 to-blue-600' 
-            : 'bg-gradient-to-br from-indigo-950 via-purple-950 to-black'
-        }`}
-      >
+      {/* Dynamic Animated Background with smooth phase transitions */}
+      <div className="absolute inset-0">
+        {/* Day background */}
+        <div 
+          className={`absolute inset-0 bg-gradient-to-br from-sky-300 via-blue-400 to-blue-600 transition-opacity duration-[8000ms] ease-in-out ${
+            isDay ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+        {/* Night background */}
+        <div 
+          className={`absolute inset-0 bg-gradient-to-br from-indigo-950 via-purple-950 to-black transition-opacity duration-[8000ms] ease-in-out ${
+            isDay ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
+        
         {/* Animated Background Elements */}
         <Stars isDay={isDay} />
-        <Sun isDay={isDay} />
-        <Moon isDay={isDay} />
+        <Sun key={`sun-${isDay}`} isDay={isDay} />
+        <Moon key={`moon-${isDay}`} isDay={isDay} />
         <Clouds isDay={isDay} />
         <FloatingParticles isDay={isDay} />
         
         {/* Gradient overlay for better text readability */}
-        <div className={`absolute inset-0 ${
+        <div className={`absolute inset-0 transition-all duration-[8000ms] ease-in-out ${
           isDay 
             ? 'bg-gradient-to-r from-white/10 via-transparent to-black/20' 
             : 'bg-gradient-to-r from-black/20 via-transparent to-black/40'
@@ -316,17 +424,20 @@ const PublicViewPage = () => {
       <div className="relative z-10 min-h-screen">
         {/* Phase and User name - Top left corner */}
         <div className="absolute top-6 left-6 space-y-2">
-          <div className="text-5xl font-bold text-white drop-shadow-2xl tracking-wide">
-            {isDay ? 'Day Phase' : 'Night Phase'}
-          </div>
-          <h1 className="text-2xl font-bold text-white/80 drop-shadow-xl tracking-wide">
+          <TypewriterText 
+            text={isDay ? 'Day Phase' : 'Night Phase'} 
+            isDay={isDay}
+          />
+          <h1 className={`text-2xl font-bold drop-shadow-xl tracking-wide transition-all duration-[8000ms] ease-in-out ${
+            isDay ? 'text-yellow-200/90' : 'text-blue-200/80'
+          }`}>
             {title}
           </h1>
         </div>
 
         {/* Game info and Fullscreen - Bottom right corner */}
         <div className="absolute bottom-6 right-6 flex items-center gap-4">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border ${
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border transition-all duration-[8000ms] ease-in-out ${
             isDay 
               ? 'bg-yellow-400/20 text-yellow-100 border-yellow-300/30' 
               : 'bg-blue-600/20 text-blue-100 border-blue-400/30'
@@ -341,7 +452,11 @@ const PublicViewPage = () => {
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="w-12 h-12 rounded-full backdrop-blur-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center text-lg"
+            className={`w-12 h-12 rounded-full backdrop-blur-sm hover:scale-110 active:scale-95 border transition-all duration-[8000ms] ease-in-out flex items-center justify-center text-lg ${
+              isDay
+                ? 'bg-yellow-200/20 hover:bg-yellow-200/30 text-yellow-100 border-yellow-300/30'
+                : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
+            }`}
           >
             {isFullscreen ? "⛶" : "⛶"}
           </button>
@@ -354,15 +469,23 @@ const PublicViewPage = () => {
             activePlayers.map((player) => (
               <div
                 key={player.id}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/30 transition-all duration-300 hover:scale-105 w-28 h-28"
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl backdrop-blur-sm border hover:scale-105 w-28 h-28 transition-all duration-[8000ms] ease-in-out ${
+                  isDay
+                    ? 'bg-emerald-500/20 border-emerald-400/30 hover:bg-emerald-500/30'
+                    : 'bg-emerald-600/30 border-emerald-500/40 hover:bg-emerald-600/40'
+                }`}
               >
                 <PlayerAvatar 
                   value={player.avatar} 
                   fallbackLabel={player.name} 
                   size="md" 
-                  className="border-2 border-emerald-300/50" 
+                  className={`border-2 transition-all duration-[8000ms] ease-in-out ${
+                    isDay ? 'border-emerald-300/50' : 'border-emerald-400/60'
+                  }`} 
                 />
-                <span className="text-emerald-100 font-medium text-sm text-center leading-tight">
+                <span className={`font-medium text-sm text-center leading-tight transition-all duration-[8000ms] ease-in-out ${
+                  isDay ? 'text-emerald-100' : 'text-emerald-200'
+                }`}>
                   {player.name}
                 </span>
               </div>
@@ -374,15 +497,23 @@ const PublicViewPage = () => {
             inactivePlayers.map((player) => (
               <div
                 key={player.id}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl backdrop-blur-sm bg-rose-500/20 border border-rose-400/30 hover:bg-rose-500/30 transition-all duration-300 hover:scale-105 opacity-75 w-28 h-28"
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl backdrop-blur-sm border hover:scale-105 opacity-75 w-28 h-28 transition-all duration-[8000ms] ease-in-out ${
+                  isDay
+                    ? 'bg-rose-500/20 border-rose-400/30 hover:bg-rose-500/30'
+                    : 'bg-rose-600/30 border-rose-500/40 hover:bg-rose-600/40'
+                }`}
               >
                 <PlayerAvatar 
                   value={player.avatar} 
                   fallbackLabel={player.name} 
                   size="md" 
-                  className="border-2 border-rose-300/50 grayscale" 
+                  className={`border-2 grayscale transition-all duration-[8000ms] ease-in-out ${
+                    isDay ? 'border-rose-300/50' : 'border-rose-400/60'
+                  }`} 
                 />
-                <span className="text-rose-100 font-medium text-sm text-center leading-tight">
+                <span className={`font-medium text-sm text-center leading-tight transition-all duration-[8000ms] ease-in-out ${
+                  isDay ? 'text-rose-100' : 'text-rose-200'
+                }`}>
                   {player.name}
                 </span>
               </div>
