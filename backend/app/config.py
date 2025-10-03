@@ -3,33 +3,31 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import List, Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="APP_", extra="ignore")
 
-    database_url: str = "sqlite:///./mafiadesk.db"
-    secret_key: str = "supersecretkeychange"  # override in .env
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60 * 24
-    cors_origins: List[str] | str = [
-        "http://localhost:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:4173",
-        "https://mafiadesk.com",
-    ]
-    environment: Literal["development", "staging", "production", "test"] = "development"
-    auth_cookie_domain: str | None = None
-    auth_cookie_path: str = "/"
-    auth_cookie_secure: bool | None = None
-    auth_cookie_samesite: Literal["lax", "strict", "none"] | None = None
-    firestore_project_id: str = "home-projects-425618"
-    firestore_database: str = "mafiadesk"
-    firestore_credentials_file: str = "home-projects-access.json"
-    firestore_emulator_host: str | None = None
+    database_url: str = Field(..., description="Database connection URL")
+    secret_key: str = Field(..., description="Secret key for JWT token signing")
+    algorithm: str = Field(default="HS256", description="JWT algorithm")
+    access_token_expire_minutes: int = Field(default=1440, description="Token expiration in minutes")
+    cors_origins: List[str] | str = Field(default=[], description="Allowed CORS origins")
+    environment: Literal["development", "staging", "production", "test"] = Field(
+        default="development", description="Application environment"
+    )
+    auth_cookie_domain: str | None = Field(default=None, description="Cookie domain")
+    auth_cookie_path: str = Field(default="/", description="Cookie path")
+    auth_cookie_secure: bool | None = Field(default=None, description="Secure cookie flag")
+    auth_cookie_samesite: Literal["lax", "strict", "none"] | None = Field(
+        default=None, description="SameSite cookie attribute"
+    )
+    firestore_project_id: str = Field(..., description="Firestore project ID")
+    firestore_database: str = Field(..., description="Firestore database name")
+    firestore_credentials_file: str = Field(..., description="Path to Firestore credentials file")
+    firestore_emulator_host: str | None = Field(default=None, description="Firestore emulator host")
 
     @field_validator("cors_origins")
     @classmethod
@@ -37,6 +35,23 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
+
+    @model_validator(mode="after")
+    def validate_secure_config(self) -> "Settings":
+        """Ensure secure configuration in production/staging environments."""
+        if self.environment in {"production", "staging"}:
+            # Check for insecure default secret keys
+            if len(self.secret_key) < 32:
+                raise ValueError(
+                    f"APP_SECRET_KEY must be a secure random string (at least 32 characters) "
+                    f"in {self.environment} environment"
+                )
+            
+            # Ensure secure cookie settings for production
+            if self.auth_cookie_secure is not True and self.environment == "production":
+                raise ValueError("APP_AUTH_COOKIE_SECURE must be true in production environment")
+        
+        return self
 
 
 @lru_cache
