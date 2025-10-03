@@ -79,3 +79,7 @@ Icon?
 # Local tooling
 *.code-workspace
 .local/
+
+
+# credentials
+home-projects-access.json

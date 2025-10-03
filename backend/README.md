@@ -80,6 +80,16 @@ Key routes:
 
 Authentication uses signed JWT cookies. The WebSocket manager keeps per-game rooms and rebroadcasts serialized state when Firestore documents change.
 
+## Logging
+
+Logging is powered by [Loguru](https://loguru.readthedocs.io). Verbosity automatically adapts to the configured environment:
+
+- `development` / `test`: rich, colorized debug logs with stack traces to ease troubleshooting.
+- `staging`: concise structured info-level logs suitable for shared environments.
+- `production`: warning-level output only, keeping noise to a minimum.
+
+Data-layer operations and key API handlers emit structured debug events. Sensitive fields such as passwords are automatically redacted before they reach the log stream.
+
 ## Testing
 
 ```bash

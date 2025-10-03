@@ -91,19 +91,19 @@ def test_full_flow(test_client: TestClient) -> None:
     assert resp.status_code == 200
     assert resp.json()["status"] == "active"
 
-    resp = test_client.post(
-        f"/games/{game_id}/action",
-        json={"action_type": "kill", "target_player_id": players["Dylan"]},
-    )
-    assert resp.status_code == 200
-
-    resp = test_client.post(
-        f"/games/{game_id}/action",
-        json={"action_type": "save", "target_player_id": players["Dylan"]},
-    )
-    assert resp.status_code == 200
-
     resp = test_client.post(f"/games/{game_id}/phase", json={"phase": "night"})
+    assert resp.status_code == 200
+
+    resp = test_client.post(
+        f"/games/{game_id}/night_actions",
+        json={
+            "actions": [
+                {"action_type": "kill", "target_player_id": players["Dylan"]},
+                {"action_type": "save", "target_player_id": players["Dylan"]},
+                {"action_type": "investigate", "target_player_id": players["Alice"]},
+            ]
+        },
+    )
     assert resp.status_code == 200
 
     resp = test_client.post(f"/games/{game_id}/phase", json={"phase": "day"})

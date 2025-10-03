@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from loguru import logger
 
 from .. import schemas
 from ..database import get_datastore
@@ -20,6 +21,7 @@ def signup(
     request: Request,
     datastore = Depends(get_datastore),
 ) -> schemas.UserRead:
+    logger.bind(username=payload.username).debug("Processing signup request")
     existing = datastore.get_user_by_username(payload.username)
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
@@ -28,6 +30,8 @@ def signup(
 
     token = create_access_token({"sub": user.id})
     set_auth_cookie(response, token, request=request)
+
+    logger.bind(user_id=user.id).debug("User signed up")
 
     return schemas.UserRead.model_validate(user)
 
@@ -39,12 +43,14 @@ def login(
     request: Request,
     datastore = Depends(get_datastore),
 ) -> schemas.UserRead:
+    logger.bind(username=payload.username).debug("Processing login request")
     user = datastore.get_user_by_username(payload.username)
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_access_token({"sub": user.id}, expires_delta=timedelta(minutes=60 * 24))
     set_auth_cookie(response, token, request=request)
+    logger.bind(user_id=user.id).debug("User logged in")
     return schemas.UserRead.model_validate(user)
 
 
@@ -54,6 +60,7 @@ def logout(response: Response, request: Request) -> Response:
 
     clear_auth_cookie(response, request=request)
     response.status_code = status.HTTP_204_NO_CONTENT
+    logger.debug("User logged out")
     return response
 
 

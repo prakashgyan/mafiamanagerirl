@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
 import LogsSection from "../components/LogTimeline";
-import { api, GameDetail, GamePhase, Player } from "../services/api";
+import { api, GameActionPayload, GameDetail, GamePhase, Player } from "../services/api";
 import { getPlayerCardClasses, getRoleLabelClass } from "../utils/playerStyles";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
 import PlayerAvatar from "../components/PlayerAvatar";
@@ -241,54 +241,55 @@ const DashboardPageContent = () => {
   const processNightActions = useCallback(async () => {
     if (!game) return;
 
-    let latestGame = game;
     const killTargetId = plannedNightActions.kill;
     const saveTargetId = plannedNightActions.save;
     const investigateTargetId = plannedNightActions.investigate;
+
+    if (!killTargetId && !saveTargetId && !investigateTargetId) {
+      return;
+    }
+
     const trimmedNote = note.trim();
+    const actions: GameActionPayload[] = [];
     let noteConsumed = false;
 
     const resolvePlayerName = (playerId?: number) =>
-      playerId ? latestGame.players.find((player) => player.id === playerId)?.name ?? "Unknown" : "Unknown";
-
-    const executeAction = async (
-      actionType: "kill" | "save" | "investigate",
-      targetId: number,
-      overrideNote?: string
-    ) => {
-      const payloadNote = overrideNote ?? (!noteConsumed && trimmedNote ? trimmedNote : undefined);
-      if (!overrideNote && payloadNote) {
-        noteConsumed = true;
-      }
-      if (overrideNote) {
-        noteConsumed = noteConsumed || false;
-      }
-      const response = await api.sendAction(latestGame.id, {
-        action_type: actionType,
-        target_player_id: targetId,
-        note: payloadNote,
-      });
-      latestGame = response;
-      setGame(response);
-    };
+      playerId ? game.players.find((player) => player.id === playerId)?.name ?? "Unknown" : "Unknown";
 
     if (killTargetId) {
-      let killNote: string | undefined;
+      const killAction: GameActionPayload = {
+        action_type: "kill",
+        target_player_id: killTargetId,
+      };
       if (saveTargetId && saveTargetId === killTargetId) {
         const name = resolvePlayerName(killTargetId);
-        killNote = `Mafia tried to kill ${name}.`;
+        killAction.note = `Mafia tried to kill ${name}.`;
       }
-      await executeAction("kill", killTargetId, killNote);
+      actions.push(killAction);
     }
 
     if (saveTargetId) {
-      await executeAction("save", saveTargetId);
+      actions.push({ action_type: "save", target_player_id: saveTargetId });
     }
 
     if (investigateTargetId) {
-      await executeAction("investigate", investigateTargetId);
+      actions.push({ action_type: "investigate", target_player_id: investigateTargetId });
     }
 
+    if (!actions.length) {
+      return;
+    }
+
+    if (trimmedNote) {
+      const targetAction = actions.find((action) => !action.note);
+      if (targetAction) {
+        targetAction.note = trimmedNote;
+        noteConsumed = true;
+      }
+    }
+
+    const response = await api.sendNightActions(game.id, actions);
+    setGame(response);
     if (noteConsumed) {
       setNote("");
     }

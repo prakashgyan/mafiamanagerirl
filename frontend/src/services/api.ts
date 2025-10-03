@@ -49,6 +49,13 @@ export type CreateGamePlayer = {
   friend_id?: number | null;
 };
 
+export type GameActionPayload = {
+  action_type: string;
+  target_player_id?: number;
+  actor_role?: string;
+  note?: string;
+};
+
 const API_FALLBACKS = {
   development: "http://localhost:8000",
   production: "https://api.mafiadesk.com",
@@ -133,11 +140,13 @@ export const api = {
       body: JSON.stringify({ assignments }),
     }),
   startGame: (gameId: number) => apiFetch<GameDetail>(`/games/${gameId}/start`, { method: "POST" }),
-  sendAction: (
-    gameId: number,
-    payload: { action_type: string; target_player_id?: number; actor_role?: string; note?: string }
-  ) =>
+  sendAction: (gameId: number, payload: GameActionPayload) =>
     apiFetch<GameDetail>(`/games/${gameId}/action`, { method: "POST", body: JSON.stringify(payload) }),
+  sendNightActions: (gameId: number, actions: GameActionPayload[]) =>
+    apiFetch<GameDetail>(`/games/${gameId}/night_actions`, {
+      method: "POST",
+      body: JSON.stringify({ actions }),
+    }),
   changePhase: (gameId: number, phase: GamePhase) =>
     apiFetch<GameDetail>(`/games/${gameId}/phase`, { method: "POST", body: JSON.stringify({ phase }) }),
   finishGame: (gameId: number, winningTeam: string) =>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from loguru import logger
 
 from .. import schemas
 from ..database import get_datastore
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/friends", tags=["friends"])
 
 @router.get("/", response_model=list[schemas.FriendRead])
 def list_friends(current_user: User = Depends(get_current_user), datastore = Depends(get_datastore)) -> list[schemas.FriendRead]:
+    logger.bind(user_id=current_user.id).debug("Listing friends")
     friends = datastore.list_friends(current_user.id)
     return [schemas.FriendRead.model_validate(friend) for friend in friends]
 
@@ -28,6 +30,7 @@ def create_friend(
         description=payload.description,
         image=payload.image,
     )
+    logger.bind(friend_id=friend.id, user_id=current_user.id).debug("Friend created")
     return schemas.FriendRead.model_validate(friend)
 
 
@@ -40,4 +43,5 @@ def delete_friend(
     deleted = datastore.delete_friend(friend_id, current_user.id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found")
+    logger.bind(friend_id=friend_id, user_id=current_user.id).debug("Friend deleted")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

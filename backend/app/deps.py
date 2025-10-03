@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request, status
+from loguru import logger
 
 from .database import get_datastore
 from .models import User
@@ -25,4 +26,5 @@ def get_current_user(request: Request, datastore = Depends(get_datastore)) -> Us
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
+    logger.bind(user_id=user_id).debug("Resolved current user")
     return user

@@ -140,6 +140,23 @@ class FinishGameRequest(BaseModel):
     winning_team: str
 
 
+class NightActionsRequest(BaseModel):
+    actions: List[GameActionRequest]
+
+    @model_validator(mode="after")
+    def validate_actions(self) -> "NightActionsRequest":
+        if not self.actions:
+            raise ValueError("Provide at least one night action")
+
+        allowed_types = {"kill", "save", "investigate"}
+        for action in self.actions:
+            if action.action_type not in allowed_types:
+                raise ValueError(f"Unsupported night action: {action.action_type}")
+            if action.target_player_id is None:
+                raise ValueError(f"Night action {action.action_type} requires a target player")
+        return self
+
+
 class GameHistoryEntry(GameRead):
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None

@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-import logging
-
 from fastapi import Depends, FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect
 
+from loguru import logger
+
 from .config import get_settings
 from .database import get_datastore
+from .logging_utils import configure_logging
 from .router_registry import include_routers
 from .socket_manager import manager
 
+configure_logging()
 settings = get_settings()
-logging.basicConfig(level=logging.INFO)
+
+logger.bind(environment=settings.environment).info("Booting MafiaDesk backend")
 
 app = FastAPI(title="MafiaDesk", version="1.0.0")
 
@@ -28,7 +31,9 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     # Instantiate datastore early to surface configuration issues on boot
+    logger.debug("Executing startup sequence")
     get_datastore()
+    logger.debug("Datastore initialized successfully")
 
 
 include_routers(app)
@@ -81,7 +86,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: int, datastore = Dep
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(game_id, websocket)
-    except Exception as exc:  # pragma: no cover - safety net for unexpected websocket failures
-        logging.exception("WebSocket error: %s", exc)
+    except Exception:  # pragma: no cover - safety net for unexpected websocket failures
+        logger.exception("WebSocket error during session for game {}", game_id)
         manager.disconnect(game_id, websocket)
         await websocket.close(code=1011)
