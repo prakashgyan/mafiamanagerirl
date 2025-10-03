@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Optional
 
 import random
@@ -13,7 +12,7 @@ from .. import schemas
 from ..database import get_datastore
 from ..deps import get_current_user
 from ..game_logic import determine_winner, resolve_vote_elimination
-from ..models import Game, GameAggregate, GamePhase, GameStatus, Log, Player, User
+from ..models import Game, GameAggregate, GamePhase, GameStatus, Log, Player, User, create_game_log
 from ..socket_manager import manager
 
 router = APIRouter(prefix="/games", tags=["games"])
@@ -161,7 +160,6 @@ def process_game_action(bundle: GameAggregate, datastore, action: schemas.GameAc
         round=bundle.current_round,
         phase=bundle.current_phase,
         message=message,
-        timestamp=datetime.now(UTC),
     )
     append_log(bundle, log_entry)
 
@@ -176,7 +174,6 @@ def process_game_action(bundle: GameAggregate, datastore, action: schemas.GameAc
             log_round=bundle.current_round,
             log_phase=bundle.current_phase,
             log_message=f"Game ended. {winner} win!",
-            timestamp=datetime.now(UTC),
         )
         if updated_game and final_log:
             sync_game_state(bundle, updated_game)
@@ -300,7 +297,6 @@ def start_game(
         log_round=1,
         log_phase=GamePhase.DAY,
         log_message="Game started",
-        timestamp=datetime.now(UTC),
     )
     if not updated_game or not new_log:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update game state")
@@ -380,7 +376,6 @@ def change_phase(
         log_round=new_round,
         log_phase=payload.phase,
         log_message=f"Phase switched to {payload.phase.value.capitalize()} {new_round}",
-        timestamp=datetime.now(UTC),
     )
     if not updated_game or not log_entry:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to change phase")
@@ -408,7 +403,6 @@ def finish_game(
         log_round=bundle.current_round,
         log_phase=bundle.current_phase,
         log_message=f"Game finished manually. Winner: {payload.winning_team}",
-        timestamp=datetime.now(UTC),
     )
     if not updated_game or not log_entry:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to finish game")
@@ -437,7 +431,6 @@ def sync_night_events(
         round=bundle.current_round,
         phase=bundle.current_phase,
         message="Night events synced to public view.",
-        timestamp=datetime.now(UTC),
     )
 
     append_log(bundle, log_entry)

@@ -22,9 +22,8 @@ Modern companion app for running in-person Mafia social deduction nights. It com
 
 | Path | Purpose |
 | --- | --- |
-| `backend/` | FastAPI application, database models, business logic, and API tests. See [`backend/README.md`](backend/README.md). |
+| `backend/` | FastAPI application, Firestore integration, business logic, and API tests. See [`backend/README.md`](backend/README.md). |
 | `frontend/` | Vite + React web client used by game hosts. See [`frontend/README.md`](frontend/README.md). |
-| `backend/mafiadesk.db` | Default SQLite database generated when running the API locally. |
 
 ## Quick start
 
@@ -63,7 +62,7 @@ Visit [http://localhost:5173](http://localhost:5173) in your browser (the Vite d
 
 - **Backend** – run `pytest` from `backend/` to execute the end-to-end API test suite.
 - **Frontend** – run `npm run lint` for TypeScript/ESLint checks; `npm run build` generates a production bundle.
-- **Database** – the default SQLite file lives at `backend/mafiadesk.db`. Delete it to start fresh or point `APP_DATABASE_URL` at PostgreSQL/MySQL in `.env`.
+- **Database** – uses Google Firestore for data persistence. See `backend/.env` for Firestore configuration options.
 
 ## Environments
 

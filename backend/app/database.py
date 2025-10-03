@@ -15,7 +15,7 @@ from google.oauth2 import service_account
 
 from .config import get_settings
 from .logging_utils import log_call
-from .models import Friend, Game, GameAggregate, GamePhase, GameStatus, Log, Player, User
+from .models import Friend, Game, GameAggregate, GamePhase, GameStatus, Log, Player, User, utc_now
 
 COUNTERS_COLLECTION = "counters"
 USERS_COLLECTION = "users"
@@ -78,7 +78,7 @@ class FirestoreDataStore:
     @log_call("firestore")
     def get_user_by_username(self, username: str) -> User | None:
         query = (
-            self.client.collection(USERS_COLLECTION).where("username", "==", username).limit(1).stream()
+            self.client.collection(USERS_COLLECTION).where(filter=firestore.FieldFilter("username", "==", username)).limit(1).stream()
         )
         for doc in query:
             return self._doc_to_user(doc)
@@ -105,7 +105,7 @@ class FirestoreDataStore:
     @log_call("firestore")
     def list_friends(self, user_id: int) -> List[Friend]:
         friends_ref = self.client.collection(FRIENDS_COLLECTION)
-        docs = friends_ref.where("user_id", "==", user_id).order_by("name").stream()
+        docs = friends_ref.where(filter=firestore.FieldFilter("user_id", "==", user_id)).order_by("name").stream()
         return [self._doc_to_friend(doc) for doc in docs]
 
     @log_call("firestore")
@@ -207,32 +207,21 @@ class FirestoreDataStore:
         log_round: int,
         log_phase: GamePhase,
         log_message: str,
-        timestamp: datetime,
+        timestamp: datetime | None = None,
     ) -> tuple[Game | None, Log | None]:
         transaction = self.client.transaction()
 
         @firestore.transactional
         def apply(transaction):
             game_ref = self.client.collection(GAMES_COLLECTION).document(str(game_id))
-            snapshot = game_ref.get(transaction=transaction)
-            if not snapshot.exists:
+            game_doc = game_ref.get(transaction=transaction)
+            if not game_doc.exists:
                 return None
+            data = game_doc.to_dict()
+            data.update(changes)
+            transaction.update(game_ref, changes)
 
-            data = snapshot.to_dict() or {}
-
-            update_fields: Dict[str, Any] = {}
-            for key, value in changes.items():
-                if value is None:
-                    update_fields[key] = None
-                elif isinstance(value, (GameStatus, GamePhase)):
-                    update_fields[key] = value.value
-                else:
-                    update_fields[key] = value
-
-            if update_fields:
-                transaction.update(game_ref, update_fields)
-                data.update(update_fields)
-
+            ts = timestamp or utc_now()
             log_id = self._next_id(LOGS_COLLECTION)
             log_data = {
                 "id": log_id,
@@ -240,7 +229,7 @@ class FirestoreDataStore:
                 "round": log_round,
                 "phase": log_phase.value,
                 "message": log_message,
-                "timestamp": timestamp,
+                "timestamp": ts,
             }
             log_ref = self.client.collection(LOGS_COLLECTION).document(str(log_id))
             transaction.set(log_ref, log_data)
@@ -259,9 +248,9 @@ class FirestoreDataStore:
 
     @log_call("firestore")
     def list_games(self, host_id: int, status_filter: GameStatus | None = None) -> List[Game]:
-        games_ref = self.client.collection(GAMES_COLLECTION).where("host_id", "==", host_id)
+        games_ref = self.client.collection(GAMES_COLLECTION).where(filter=firestore.FieldFilter("host_id", "==", host_id))
         if status_filter is not None:
-            games_ref = games_ref.where("status", "==", status_filter.value)
+            games_ref = games_ref.where(filter=firestore.FieldFilter("status", "==", status_filter.value))
         docs = games_ref.order_by("id", direction=firestore.Query.DESCENDING).stream()
         return [self._doc_to_game(doc) for doc in docs]
 
@@ -320,22 +309,23 @@ class FirestoreDataStore:
     def list_players(self, game_id: int) -> List[Player]:
         docs = (
             self.client.collection(PLAYERS_COLLECTION)
-            .where("game_id", "==", game_id)
+            .where(filter=firestore.FieldFilter("game_id", "==", game_id))
             .order_by("id")
             .stream()
         )
         return [self._doc_to_player(doc) for doc in docs]
 
     @log_call("firestore")
-    def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime) -> Log:
+    def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime | None = None) -> Log:
         log_id = self._next_id(LOGS_COLLECTION)
+        ts = timestamp or utc_now()
         data = {
             "id": log_id,
             "game_id": game_id,
             "round": round,
             "phase": phase.value,
             "message": message,
-            "timestamp": timestamp,
+            "timestamp": ts,
         }
         self.client.collection(LOGS_COLLECTION).document(str(log_id)).set(data)
         log = self._doc_to_log_dict(data)
@@ -346,7 +336,7 @@ class FirestoreDataStore:
     def list_logs(self, game_id: int) -> List[Log]:
         docs = (
             self.client.collection(LOGS_COLLECTION)
-            .where("game_id", "==", game_id)
+            .where(filter=firestore.FieldFilter("game_id", "==", game_id))
             .order_by("timestamp")
             .stream()
         )
@@ -589,7 +579,7 @@ class InMemoryDataStore:
         log_round: int,
         log_phase: GamePhase,
         log_message: str,
-        timestamp: datetime,
+        timestamp: datetime | None = None,
     ) -> tuple[Game | None, Log | None]:
         game = self._games.get(game_id)
         if not game:
@@ -655,15 +645,16 @@ class InMemoryDataStore:
         return sorted(players, key=lambda p: p.id)
 
     @log_call("datastore.memory")
-    def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime) -> Log:
+    def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime | None = None) -> Log:
         log_id = self._next_id(LOGS_COLLECTION)
+        ts = timestamp or utc_now()
         log = Log(
             id=log_id,
             game_id=game_id,
             round=round,
             phase=phase,
             message=message,
-            timestamp=timestamp,
+            timestamp=ts,
         )
         self._logs[log_id] = log
         self._invalidate_game_cache(game_id)

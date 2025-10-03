@@ -10,6 +10,14 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def create_game_log(game_id: int, round: int, phase: GamePhase, message: str) -> tuple[int, GamePhase, str]:
+    """Helper to create consistent log entries with automatic timestamp handling.
+    
+    Returns tuple of (round, phase, message) for use with datastore.add_log()
+    """
+    return round, phase, message
+
+
 class GameStatus(str, enum.Enum):
     PENDING = "pending"
     ACTIVE = "active"

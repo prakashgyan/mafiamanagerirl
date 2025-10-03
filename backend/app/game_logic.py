@@ -7,20 +7,23 @@ from .models import GameAggregate, Player
 MAFIA_ROLES = {"Mafia"}
 GOOD_ROLES = {"Villager", "Doctor", "Detective", "Jester"}
 
+# Precompute lowercase role sets to avoid recomputation on every function call
+MAFIA_ROLES_LOWER = {role.lower() for role in MAFIA_ROLES}
+
 
 def alive_players(players: Iterable[Player]) -> list[Player]:
     return [player for player in players if player.is_alive]
 
 
 def count_mafia(players: Iterable[Player]) -> int:
-    return sum(1 for player in players if player.is_alive and (player.role or "").lower() in {role.lower() for role in MAFIA_ROLES})
+    return sum(1 for player in players if player.is_alive and (player.role or "").lower() in MAFIA_ROLES_LOWER)
 
 
 def count_non_mafia(players: Iterable[Player]) -> int:
     return sum(
         1
         for player in players
-        if player.is_alive and (player.role or "").lower() not in {role.lower() for role in MAFIA_ROLES}
+        if player.is_alive and (player.role or "").lower() not in MAFIA_ROLES_LOWER
     )
 
 
