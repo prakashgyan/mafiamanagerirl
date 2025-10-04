@@ -7,9 +7,10 @@ from starlette.websockets import WebSocketDisconnect
 from loguru import logger
 
 from .config import get_settings
-from .database import get_datastore
+from .database import Datastore, get_datastore
 from .logging_utils import configure_logging
 from .router_registry import include_routers
+from .services.game_service import GameService
 from .socket_manager import manager
 
 configure_logging()
@@ -44,44 +45,21 @@ def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def get_game_service(datastore: Datastore = Depends(get_datastore)) -> GameService:
+    return GameService(datastore)
+
+
 @app.websocket("/ws/game/{game_id}")
-async def websocket_endpoint(websocket: WebSocket, game_id: int, datastore = Depends(get_datastore)) -> None:
+async def websocket_endpoint(
+    websocket: WebSocket,
+    game_id: int,
+    game_service: GameService = Depends(get_game_service),
+) -> None:
     await manager.connect(game_id, websocket)
     try:
-        bundle = datastore.get_game_bundle(game_id)
-        if bundle:
-            await manager.broadcast(
-                game_id,
-                {
-                    "event": "init",
-                    "game_id": bundle.id,
-                    "status": bundle.status.value,
-                    "phase": bundle.current_phase.value,
-                    "round": bundle.current_round,
-                    "winning_team": bundle.winning_team,
-                    "players": [
-                        {
-                            "id": player.id,
-                            "name": player.name,
-                            "role": player.role,
-                            "is_alive": player.is_alive,
-                            "avatar": player.avatar,
-                            "friend_id": player.friend_id,
-                        }
-                        for player in bundle.players
-                    ],
-                    "logs": [
-                        {
-                            "id": log.id,
-                            "round": log.round,
-                            "phase": log.phase.value,
-                            "message": log.message,
-                            "timestamp": log.timestamp.isoformat(),
-                        }
-                        for log in bundle.logs
-                    ],
-                },
-            )
+        game_manager = game_service.get_game_manager(game_id)
+        if game_manager:
+            await manager.broadcast(game_id, game_manager.serialize_for_broadcast("init"))
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
