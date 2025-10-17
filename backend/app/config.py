@@ -23,10 +23,7 @@ class Settings(BaseSettings):
     auth_cookie_samesite: Literal["lax", "strict", "none"] | None = Field(
         default=None, description="SameSite cookie attribute"
     )
-    firestore_project_id: str = Field(..., description="Firestore project ID")
-    firestore_database: str = Field(..., description="Firestore database name")
-    firestore_credentials_file: str = Field(..., description="Path to Firestore credentials file")
-    firestore_emulator_host: str | None = Field(default=None, description="Firestore emulator host")
+    database_url: str = Field(..., description="PostgreSQL connection URL")
 
     @field_validator("cors_origins")
     @classmethod

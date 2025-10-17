@@ -7,9 +7,10 @@ from starlette.websockets import WebSocketDisconnect
 from loguru import logger
 
 from .config import get_settings
-from .database import Datastore, get_datastore
+from .database import Datastore, get_datastore, init_db, get_db
 from .logging_utils import configure_logging
 from .router_registry import include_routers
+from sqlalchemy.orm import Session
 from .services.game_service import GameService
 from .socket_manager import manager
 
@@ -29,13 +30,7 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    # Instantiate datastore early to surface configuration issues on boot
-    logger.debug("Executing startup sequence")
-    get_datastore()
-    logger.debug("Datastore initialized successfully")
-
+init_db()
 
 include_routers(app)
 
@@ -45,18 +40,23 @@ def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
 
-def get_game_service(datastore: Datastore = Depends(get_datastore)) -> GameService:
+def get_game_service(db: Session = Depends(get_db)) -> GameService:
+    datastore = get_datastore(db)
     return GameService(datastore)
 
+
+from .database import SessionLocal
 
 @app.websocket("/ws/game/{game_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
     game_id: int,
-    game_service: GameService = Depends(get_game_service),
 ) -> None:
     await manager.connect(game_id, websocket)
+    db = SessionLocal()
     try:
+        datastore = get_datastore(db)
+        game_service = GameService(datastore)
         game_manager = game_service.get_game_manager(game_id)
         if game_manager:
             await manager.broadcast(game_id, game_manager.serialize_for_broadcast("init"))
@@ -68,3 +68,5 @@ async def websocket_endpoint(
         logger.exception("WebSocket error during session for game {}", game_id)
         manager.disconnect(game_id, websocket)
         await websocket.close(code=1011)
+    finally:
+        db.close()

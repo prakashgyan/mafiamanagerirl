@@ -8,22 +8,64 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from loguru import logger
-
-from google.cloud import firestore
-from google.cloud.firestore import Increment
-from google.oauth2 import service_account
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Enum, ForeignKey
+from sqlalchemy.orm import sessionmaker, relationship, Session, joinedload
+from sqlalchemy.ext.declarative import declarative_base
 
 from .config import get_settings
 from .logging_utils import log_call
 from .models import Friend, Game, GameAggregate, GamePhase, GameStatus, Log, Player, User, utc_now
 
-COUNTERS_COLLECTION = "counters"
-USERS_COLLECTION = "users"
-FRIENDS_COLLECTION = "friends"
-GAMES_COLLECTION = "games"
-PLAYERS_COLLECTION = "players"
-LOGS_COLLECTION = "logs"
-ID_ALLOCATION_BLOCK_SIZE = 20
+Base = declarative_base()
+
+class UserDb(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+
+class FriendDb(Base):
+    __tablename__ = "friends"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String)
+    description = Column(String, nullable=True)
+    image = Column(String, nullable=True)
+    user = relationship("UserDb")
+
+class GameDb(Base):
+    __tablename__ = "games"
+    id = Column(Integer, primary_key=True, index=True)
+    host_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(Enum(GameStatus), default=GameStatus.PENDING)
+    current_phase = Column(Enum(GamePhase), default=GamePhase.DAY)
+    current_round = Column(Integer, default=1)
+    winning_team = Column(String, nullable=True)
+    host = relationship("UserDb")
+    players = relationship("PlayerDb", back_populates="game", lazy="joined")
+    logs = relationship("LogDb", back_populates="game", lazy="joined")
+
+class PlayerDb(Base):
+    __tablename__ = "players"
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"))
+    name = Column(String)
+    role = Column(String, nullable=True)
+    is_alive = Column(Boolean, default=True)
+    avatar = Column(String, nullable=True)
+    friend_id = Column(Integer, ForeignKey("friends.id"), nullable=True)
+    game = relationship("GameDb", back_populates="players")
+    friend = relationship("FriendDb")
+
+class LogDb(Base):
+    __tablename__ = "logs"
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"))
+    round = Column(Integer)
+    phase = Column(Enum(GamePhase))
+    message = Column(String)
+    timestamp = Column(DateTime, default=utc_now)
+    game = relationship("GameDb", back_populates="logs")
 
 
 class Datastore(Protocol):
@@ -70,46 +112,13 @@ class Datastore(Protocol):
     def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime | None = None) -> Log: ...
     def list_logs(self, game_id: int) -> List[Log]: ...
     def get_game_bundle(self, game_id: int) -> GameAggregate | None: ...
+    def reset(self) -> None: ...
 
 
-class FirestoreDataStore:
-    def __init__(self, client: firestore.Client) -> None:
-        self.client = client
-        self._counters = client.collection(COUNTERS_COLLECTION)
-        self._id_cache: Dict[str, Tuple[int, int]] = {}
+class PostgresDataStore:
+    def __init__(self, session: Session):
+        self.session = session
         self._cache_invalidator: Optional[Callable[[int], None]] = None
-
-    @classmethod
-    @log_call("firestore")
-    def from_settings(cls, settings) -> "FirestoreDataStore":
-        credentials_path = Path(settings.firestore_credentials_file)
-        if not credentials_path.is_absolute():
-            base_dir = Path(__file__).resolve().parents[2]
-            credentials_path = (base_dir / credentials_path).resolve()
-
-        credentials = None
-        if settings.firestore_emulator_host:
-            os.environ.setdefault("FIRESTORE_EMULATOR_HOST", settings.firestore_emulator_host)
-            logger.info(
-                "Connecting to Firestore emulator at {} for database {}",
-                settings.firestore_emulator_host,
-                settings.firestore_database,
-            )
-        else:
-            if not credentials_path.exists():
-                raise FileNotFoundError(
-                    "Firestore credentials file not found at " f"{credentials_path}. Update APP_FIRESTORE_CREDENTIALS_FILE."
-                )
-            os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", str(credentials_path))
-            credentials = service_account.Credentials.from_service_account_file(str(credentials_path))
-            logger.info(
-                "Connecting to Firestore project {} (database={}) with service account",
-                settings.firestore_project_id,
-                settings.firestore_database,
-            )
-
-        client = firestore.Client(project=settings.firestore_project_id, credentials=credentials, database=settings.firestore_database)
-        return cls(client)
 
     def set_cache_invalidator(self, callback: Optional[Callable[[int], None]]) -> None:
         self._cache_invalidator = callback
@@ -121,75 +130,52 @@ class FirestoreDataStore:
             except Exception as exc:
                 logger.exception("Cache invalidation callback failed for game %s: %s", game_id, exc)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def get_user_by_username(self, username: str) -> User | None:
-        query = (
-            self.client.collection(USERS_COLLECTION).where(filter=firestore.FieldFilter("username", "==", username)).limit(1).stream()
-        )
-        for doc in query:
-            return self._doc_to_user(doc)
-        return None
+        user_db = self.session.query(UserDb).filter(UserDb.username == username).first()
+        return User.from_orm(user_db) if user_db else None
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def get_user_by_id(self, user_id: int) -> User | None:
-        doc = self.client.collection(USERS_COLLECTION).document(str(user_id)).get()
-        if not doc.exists:
-            return None
-        return self._doc_to_user(doc)
+        user_db = self.session.query(UserDb).filter(UserDb.id == user_id).first()
+        return User.from_orm(user_db) if user_db else None
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def create_user(self, username: str, password_hash: str) -> User:
-        user_id = self._next_id(USERS_COLLECTION)
-        data = {
-            "id": user_id,
-            "username": username,
-            "password_hash": password_hash,
-        }
-        self.client.collection(USERS_COLLECTION).document(str(user_id)).set(data)
-        return User(**data)
+        user_db = UserDb(username=username, password_hash=password_hash)
+        self.session.add(user_db)
+        self.session.commit()
+        self.session.refresh(user_db)
+        return User.from_orm(user_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def list_friends(self, user_id: int) -> List[Friend]:
-        friends_ref = self.client.collection(FRIENDS_COLLECTION)
-        docs = friends_ref.where(filter=firestore.FieldFilter("user_id", "==", user_id)).order_by("name").stream()
-        return [self._doc_to_friend(doc) for doc in docs]
+        friends_db = self.session.query(FriendDb).filter(FriendDb.user_id == user_id).order_by(FriendDb.name).all()
+        return [Friend.from_orm(f) for f in friends_db]
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def create_friend(self, user_id: int, *, name: str, description: str | None, image: str | None) -> Friend:
-        friend_id = self._next_id(FRIENDS_COLLECTION)
-        data = {
-            "id": friend_id,
-            "user_id": user_id,
-            "name": name,
-            "description": description,
-            "image": image,
-        }
-        self.client.collection(FRIENDS_COLLECTION).document(str(friend_id)).set(data)
-        return Friend(**data)
+        friend_db = FriendDb(user_id=user_id, name=name, description=description, image=image)
+        self.session.add(friend_db)
+        self.session.commit()
+        self.session.refresh(friend_db)
+        return Friend.from_orm(friend_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def delete_friend(self, friend_id: int, user_id: int) -> bool:
-        doc_ref = self.client.collection(FRIENDS_COLLECTION).document(str(friend_id))
-        doc = doc_ref.get()
-        if not doc.exists:
+        friend_db = self.session.query(FriendDb).filter(FriendDb.id == friend_id, FriendDb.user_id == user_id).first()
+        if not friend_db:
             return False
-        data = doc.to_dict() or {}
-        if data.get("user_id") != user_id:
-            return False
-        doc_ref.delete()
+        self.session.delete(friend_db)
+        self.session.commit()
         return True
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def get_friend_for_user(self, friend_id: int, user_id: int) -> Friend | None:
-        doc = self.client.collection(FRIENDS_COLLECTION).document(str(friend_id)).get()
-        if not doc.exists:
-            return None
-        friend = self._doc_to_friend(doc)
-        if friend.user_id != user_id:
-            return None
-        return friend
+        friend_db = self.session.query(FriendDb).filter(FriendDb.id == friend_id, FriendDb.user_id == user_id).first()
+        return Friend.from_orm(friend_db) if friend_db else None
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def create_game(
         self,
         host_id: int,
@@ -199,52 +185,36 @@ class FirestoreDataStore:
         current_round: int = 1,
         winning_team: str | None = None,
     ) -> Game:
-        game_id = self._next_id(GAMES_COLLECTION)
-        data = {
-            "id": game_id,
-            "host_id": host_id,
-            "status": status.value,
-            "current_phase": current_phase.value,
-            "current_round": current_round,
-            "winning_team": winning_team,
-        }
-        self.client.collection(GAMES_COLLECTION).document(str(game_id)).set(data)
-        return self._doc_to_game_dict(data)
+        game_db = GameDb(
+            host_id=host_id,
+            status=status,
+            current_phase=current_phase,
+            current_round=current_round,
+            winning_team=winning_team,
+        )
+        self.session.add(game_db)
+        self.session.commit()
+        self.session.refresh(game_db)
+        return Game.from_orm(game_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def get_game(self, game_id: int) -> Game | None:
-        doc = self.client.collection(GAMES_COLLECTION).document(str(game_id)).get()
-        if not doc.exists:
-            return None
-        return self._doc_to_game(doc)
+        game_db = self.session.query(GameDb).filter(GameDb.id == game_id).first()
+        return Game.from_orm(game_db) if game_db else None
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def update_game(self, game_id: int, **changes: Any) -> Game | None:
-        doc_ref = self.client.collection(GAMES_COLLECTION).document(str(game_id))
-        snapshot = doc_ref.get()
-        if not snapshot.exists:
+        game_db = self.session.query(GameDb).filter(GameDb.id == game_id).first()
+        if not game_db:
             return None
-
-        data = snapshot.to_dict() or {}
-
-        update_fields: Dict[str, Any] = {}
         for key, value in changes.items():
-            if value is None:
-                update_fields[key] = None
-            elif isinstance(value, (GameStatus, GamePhase)):
-                update_fields[key] = value.value
-            else:
-                update_fields[key] = value
-
-        if update_fields:
-            doc_ref.update(update_fields)
-            data.update(update_fields)
-
-        updated_game = self._doc_to_game_dict(data)
+            setattr(game_db, key, value)
+        self.session.commit()
+        self.session.refresh(game_db)
         self._invalidate_game_cache(game_id)
-        return updated_game
+        return Game.from_orm(game_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def update_game_with_log(
         self,
         game_id: int,
@@ -255,52 +225,37 @@ class FirestoreDataStore:
         log_message: str,
         timestamp: datetime | None = None,
     ) -> tuple[Game | None, Log | None]:
-        transaction = self.client.transaction()
-
-        @firestore.transactional
-        def apply(transaction):
-            game_ref = self.client.collection(GAMES_COLLECTION).document(str(game_id))
-            game_doc = game_ref.get(transaction=transaction)
-            if not game_doc.exists:
-                return None
-            data = game_doc.to_dict()
-            data.update(changes)
-            transaction.update(game_ref, changes)
-
-            ts = timestamp or utc_now()
-            log_id = self._next_id(LOGS_COLLECTION)
-            log_data = {
-                "id": log_id,
-                "game_id": game_id,
-                "round": log_round,
-                "phase": log_phase.value,
-                "message": log_message,
-                "timestamp": ts,
-            }
-            log_ref = self.client.collection(LOGS_COLLECTION).document(str(log_id))
-            transaction.set(log_ref, log_data)
-
-            updated_game = self._doc_to_game_dict(data)
-            log_entry = self._doc_to_log_dict(log_data)
-            return updated_game, log_entry
-
-        result = apply(transaction)
-        if result is None:
+        game_db = self.session.query(GameDb).filter(GameDb.id == game_id).first()
+        if not game_db:
             return None, None
 
-        updated_game, log_entry = result
+        for key, value in changes.items():
+            setattr(game_db, key, value)
+
+        log_db = LogDb(
+            game_id=game_id,
+            round=log_round,
+            phase=log_phase,
+            message=log_message,
+            timestamp=timestamp or utc_now(),
+        )
+        self.session.add(log_db)
+        self.session.commit()
+        self.session.refresh(game_db)
+        self.session.refresh(log_db)
+
         self._invalidate_game_cache(game_id)
-        return updated_game, log_entry
+        return Game.from_orm(game_db), Log.from_orm(log_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def list_games(self, host_id: int, status_filter: GameStatus | None = None) -> List[Game]:
-        games_ref = self.client.collection(GAMES_COLLECTION).where(filter=firestore.FieldFilter("host_id", "==", host_id))
+        query = self.session.query(GameDb).filter(GameDb.host_id == host_id)
         if status_filter is not None:
-            games_ref = games_ref.where(filter=firestore.FieldFilter("status", "==", status_filter.value))
-        docs = games_ref.order_by("id", direction=firestore.Query.DESCENDING).stream()
-        return [self._doc_to_game(doc) for doc in docs]
+            query = query.filter(GameDb.status == status_filter)
+        games_db = query.order_by(GameDb.id.desc()).all()
+        return [Game.from_orm(g) for g in games_db]
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def add_player(
         self,
         game_id: int,
@@ -309,196 +264,72 @@ class FirestoreDataStore:
         avatar: str | None,
         friend_id: int | None,
     ) -> Player:
-        player_id = self._next_id(PLAYERS_COLLECTION)
-        data = {
-            "id": player_id,
-            "game_id": game_id,
-            "name": name,
-            "role": None,
-            "is_alive": True,
-            "avatar": avatar,
-            "friend_id": friend_id,
-        }
-        self.client.collection(PLAYERS_COLLECTION).document(str(player_id)).set(data)
-        player = self._doc_to_player_dict(data)
+        player_db = PlayerDb(
+            game_id=game_id,
+            name=name,
+            avatar=avatar,
+            friend_id=friend_id,
+        )
+        self.session.add(player_db)
+        self.session.commit()
+        self.session.refresh(player_db)
         self._invalidate_game_cache(game_id)
-        return player
+        return Player.from_orm(player_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def update_player(self, player_id: int, game_id: int, **changes: Any) -> Player | None:
-        doc_ref = self.client.collection(PLAYERS_COLLECTION).document(str(player_id))
-        snapshot = doc_ref.get()
-        if not snapshot.exists:
+        player_db = self.session.query(PlayerDb).filter(PlayerDb.id == player_id, PlayerDb.game_id == game_id).first()
+        if not player_db:
             return None
-        data = snapshot.to_dict() or {}
-        if data.get("game_id") != game_id:
-            return None
-
-        update_fields = {k: v for k, v in changes.items()}
-        if update_fields:
-            doc_ref.update(update_fields)
-        updated_player = self._doc_to_player(doc_ref.get())
+        for key, value in changes.items():
+            setattr(player_db, key, value)
+        self.session.commit()
+        self.session.refresh(player_db)
         self._invalidate_game_cache(game_id)
-        return updated_player
+        return Player.from_orm(player_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def get_player(self, game_id: int, player_id: int) -> Player | None:
-        doc = self.client.collection(PLAYERS_COLLECTION).document(str(player_id)).get()
-        if not doc.exists:
-            return None
-        player = self._doc_to_player(doc)
-        if player.game_id != game_id:
-            return None
-        return player
+        player_db = self.session.query(PlayerDb).filter(PlayerDb.id == player_id, PlayerDb.game_id == game_id).first()
+        return Player.from_orm(player_db) if player_db else None
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def list_players(self, game_id: int) -> List[Player]:
-        docs = (
-            self.client.collection(PLAYERS_COLLECTION)
-            .where(filter=firestore.FieldFilter("game_id", "==", game_id))
-            .order_by("id")
-            .stream()
-        )
-        return [self._doc_to_player(doc) for doc in docs]
+        players_db = self.session.query(PlayerDb).filter(PlayerDb.game_id == game_id).order_by(PlayerDb.id).all()
+        return [Player.from_orm(p) for p in players_db]
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
     def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime | None = None) -> Log:
-        log_id = self._next_id(LOGS_COLLECTION)
-        ts = timestamp or utc_now()
-        data = {
-            "id": log_id,
-            "game_id": game_id,
-            "round": round,
-            "phase": phase.value,
-            "message": message,
-            "timestamp": ts,
-        }
-        self.client.collection(LOGS_COLLECTION).document(str(log_id)).set(data)
-        log = self._doc_to_log_dict(data)
-        self._invalidate_game_cache(game_id)
-        return log
-
-    @log_call("firestore")
-    def list_logs(self, game_id: int) -> List[Log]:
-        docs = (
-            self.client.collection(LOGS_COLLECTION)
-            .where(filter=firestore.FieldFilter("game_id", "==", game_id))
-            .order_by("timestamp")
-            .stream()
+        log_db = LogDb(
+            game_id=game_id,
+            round=round,
+            phase=phase,
+            message=message,
+            timestamp=timestamp or utc_now(),
         )
-        return [self._doc_to_log(doc) for doc in docs]
+        self.session.add(log_db)
+        self.session.commit()
+        self.session.refresh(log_db)
+        self._invalidate_game_cache(game_id)
+        return Log.from_orm(log_db)
 
-    @log_call("firestore")
+    @log_call("datastore.postgres")
+    def list_logs(self, game_id: int) -> List[Log]:
+        logs_db = self.session.query(LogDb).filter(LogDb.game_id == game_id).order_by(LogDb.timestamp).all()
+        return [Log.from_orm(l) for l in logs_db]
+
+    @log_call("datastore.postgres")
     def get_game_bundle(self, game_id: int) -> GameAggregate | None:
-        game = self.get_game(game_id)
-        if not game:
+        game_db = self.session.query(GameDb).filter(GameDb.id == game_id).first()
+        if not game_db:
             return None
-        players = self.list_players(game_id)
-        logs = self.list_logs(game_id)
+        game = Game.from_orm(game_db)
+        players = [Player.from_orm(p) for p in game_db.players]
+        logs = [Log.from_orm(l) for l in game_db.logs]
         return GameAggregate(game=game, players=players, logs=logs)
 
-    @log_call("firestore")
-    def _next_id(self, collection_name: str) -> int:
-        next_id, max_id = self._id_cache.get(collection_name, (0, -1))
-        if next_id <= max_id:
-            self._id_cache[collection_name] = (next_id + 1, max_id)
-            return next_id
-
-        start, end = self._allocate_id_block(collection_name)
-        self._id_cache[collection_name] = (start + 1, end)
-        return start
-
-    def _allocate_id_block(self, collection_name: str) -> Tuple[int, int]:
-        block_size = ID_ALLOCATION_BLOCK_SIZE
-        counter_ref = self._counters.document(collection_name)
-        counter_ref.set({"value": Increment(block_size)}, merge=True)
-        snapshot = counter_ref.get()
-        value = snapshot.get("value") if snapshot.exists else None
-        if value is None:
-            counter_ref.set({"value": block_size})
-            return (1, block_size)
-        end_value = int(value)
-        start_value = max(1, end_value - block_size + 1)
-        return (start_value, end_value)
-
-    @staticmethod
-    def _doc_to_user(doc) -> User:
-        data = doc.to_dict() or {}
-        return User(
-            id=int(data["id"]),
-            username=data["username"],
-            password_hash=data["password_hash"],
-        )
-
-    @staticmethod
-    def _doc_to_friend(doc) -> Friend:
-        data = doc.to_dict() or {}
-        return Friend(
-            id=int(data["id"]),
-            user_id=int(data["user_id"]),
-            name=data["name"],
-            description=data.get("description"),
-            image=data.get("image"),
-        )
-
-    @staticmethod
-    def _doc_to_game(doc) -> Game:
-        data = doc.to_dict() or {}
-        return FirestoreDataStore._doc_to_game_dict(data)
-
-    @staticmethod
-    def _doc_to_game_dict(data: Dict[str, Any]) -> Game:
-        status = GameStatus(data.get("status", GameStatus.PENDING.value))
-        phase = GamePhase(data.get("current_phase", GamePhase.DAY.value))
-        return Game(
-            id=int(data["id"]),
-            host_id=int(data["host_id"]),
-            status=status,
-            current_phase=phase,
-            current_round=int(data.get("current_round", 1)),
-            winning_team=data.get("winning_team"),
-        )
-
-    @staticmethod
-    def _doc_to_player(doc) -> Player:
-        data = doc.to_dict() or {}
-        return FirestoreDataStore._doc_to_player_dict(data)
-
-    @staticmethod
-    def _doc_to_player_dict(data: Dict[str, Any]) -> Player:
-        return Player(
-            id=int(data["id"]),
-            game_id=int(data["game_id"]),
-            name=data["name"],
-            role=data.get("role"),
-            is_alive=bool(data.get("is_alive", True)),
-            avatar=data.get("avatar"),
-            friend_id=(int(data["friend_id"]) if data.get("friend_id") is not None else None),
-        )
-
-    @staticmethod
-    def _doc_to_log(doc) -> Log:
-        data = doc.to_dict() or {}
-        return FirestoreDataStore._doc_to_log_dict(data)
-
-    @staticmethod
-    def _doc_to_log_dict(data: Dict[str, Any]) -> Log:
-        phase = GamePhase(data.get("phase", GamePhase.DAY.value))
-        timestamp = data.get("timestamp")
-        if isinstance(timestamp, datetime):
-            ts = timestamp
-        elif isinstance(timestamp, str):
-            ts = datetime.fromisoformat(timestamp)
-        else:
-            raise ValueError("Invalid log timestamp stored in Firestore")
-        return Log(
-            id=int(data["id"]),
-            game_id=int(data["game_id"]),
-            round=int(data.get("round", 1)),
-            phase=phase,
-            message=data.get("message", ""),
-            timestamp=ts,
-        )
+    def reset(self) -> None:
+        pass
 
 
 class InMemoryDataStore:
@@ -546,7 +377,7 @@ class InMemoryDataStore:
     def create_user(self, username: str, password_hash: str) -> User:
         if username in self._usernames:
             raise ValueError("Username already exists")
-        user_id = self._next_id(USERS_COLLECTION)
+        user_id = self._next_id("users")
         user = User(id=user_id, username=username, password_hash=password_hash)
         self._users[user_id] = user
         self._usernames[username] = user_id
@@ -559,7 +390,7 @@ class InMemoryDataStore:
 
     @log_call("datastore.memory")
     def create_friend(self, user_id: int, *, name: str, description: str | None, image: str | None) -> Friend:
-        friend_id = self._next_id(FRIENDS_COLLECTION)
+        friend_id = self._next_id("friends")
         friend = Friend(id=friend_id, user_id=user_id, name=name, description=description, image=image)
         self._friends[friend_id] = friend
         return friend
@@ -589,7 +420,7 @@ class InMemoryDataStore:
         current_round: int = 1,
         winning_team: str | None = None,
     ) -> Game:
-        game_id = self._next_id(GAMES_COLLECTION)
+        game_id = self._next_id("games")
         game = Game(
             id=game_id,
             host_id=host_id,
@@ -611,10 +442,11 @@ class InMemoryDataStore:
         game = self._games.get(game_id)
         if not game:
             return None
-        updated = replace(game, **changes)
-        self._games[game_id] = updated
+
+        updated_game = game.model_copy(update=changes)
+        self._games[game_id] = updated_game
         self._invalidate_game_cache(game_id)
-        return updated
+        return updated_game
 
     @log_call("datastore.memory")
     def update_game_with_log(
@@ -631,7 +463,7 @@ class InMemoryDataStore:
         if not game:
             return None, None
 
-        updated = replace(game, **changes)
+        updated = game.model_copy(update=changes)
         self._games[game_id] = updated
 
         log_entry = self.add_log(
@@ -654,7 +486,7 @@ class InMemoryDataStore:
 
     @log_call("datastore.memory")
     def add_player(self, game_id: int, *, name: str, avatar: str | None, friend_id: int | None) -> Player:
-        player_id = self._next_id(PLAYERS_COLLECTION)
+        player_id = self._next_id("players")
         player = Player(
             id=player_id,
             game_id=game_id,
@@ -673,10 +505,11 @@ class InMemoryDataStore:
         player = self._players.get(player_id)
         if not player or player.game_id != game_id:
             return None
-        updated = replace(player, **changes)
-        self._players[player_id] = updated
+
+        updated_player = player.model_copy(update=changes)
+        self._players[player_id] = updated_player
         self._invalidate_game_cache(game_id)
-        return updated
+        return updated_player
 
     @log_call("datastore.memory")
     def get_player(self, game_id: int, player_id: int) -> Player | None:
@@ -692,7 +525,7 @@ class InMemoryDataStore:
 
     @log_call("datastore.memory")
     def add_log(self, game_id: int, *, round: int, phase: GamePhase, message: str, timestamp: datetime | None = None) -> Log:
-        log_id = self._next_id(LOGS_COLLECTION)
+        log_id = self._next_id("logs")
         ts = timestamp or utc_now()
         log = Log(
             id=log_id,
@@ -720,16 +553,31 @@ class InMemoryDataStore:
         logs = self.list_logs(game_id)
         return GameAggregate(game=game, players=players, logs=logs)
 
+_engine = None
+_SessionLocal = None
 
-def get_datastore() -> FirestoreDataStore:
-    global _firestore_datastore
-    if _firestore_datastore is None:
-        settings = get_settings()
-        logger.debug("Initializing Firestore datastore for project={}", settings.firestore_project_id)
-        _firestore_datastore = FirestoreDataStore.from_settings(settings)
-    assert _firestore_datastore is not None
-    return _firestore_datastore
+def init_db():
+    global _engine, _SessionLocal
+    settings = get_settings()
+    _engine = create_engine(settings.database_url)
+    _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+    Base.metadata.create_all(bind=_engine)
 
+def get_db():
+    if _SessionLocal is None:
+        raise Exception("Database not initialized. Call init_db() first.")
+    db = _SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-_firestore_datastore: FirestoreDataStore | None = None
+_in_memory_datastore = InMemoryDataStore()
 
+def get_datastore(db: Session = None) -> Datastore:
+    settings = get_settings()
+    if settings.environment == "test":
+        return _in_memory_datastore
+    if db:
+        return PostgresDataStore(db)
+    raise Exception("No database session provided in non-test environment")
