@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from loguru import logger
 
 from .. import schemas
-from ..database import get_datastore
+from ..database import get_datastore, get_db
 from ..deps import get_current_user
 from ..models import User
+from sqlalchemy.orm import Session
 from ..security import create_access_token, hash_password, set_auth_cookie, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -19,8 +20,9 @@ def signup(
     payload: schemas.UserCreate,
     response: Response,
     request: Request,
-    datastore = Depends(get_datastore),
+    db: Session = Depends(get_db),
 ) -> schemas.UserRead:
+    datastore = get_datastore(db)
     logger.bind(username=payload.username).debug("Processing signup request")
     existing = datastore.get_user_by_username(payload.username)
     if existing:
@@ -41,8 +43,9 @@ def login(
     payload: schemas.LoginRequest,
     response: Response,
     request: Request,
-    datastore = Depends(get_datastore),
+    db: Session = Depends(get_db),
 ) -> schemas.UserRead:
+    datastore = get_datastore(db)
     logger.bind(username=payload.username).debug("Processing login request")
     user = datastore.get_user_by_username(payload.username)
     if not user or not verify_password(payload.password, user.password_hash):

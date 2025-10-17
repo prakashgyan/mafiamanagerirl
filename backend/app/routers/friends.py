@@ -4,15 +4,19 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from loguru import logger
 
 from .. import schemas
-from ..database import get_datastore
+from ..database import get_datastore, get_db
 from ..deps import get_current_user
 from ..models import Friend, User
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
 
 @router.get("/", response_model=list[schemas.FriendRead])
-def list_friends(current_user: User = Depends(get_current_user), datastore = Depends(get_datastore)) -> list[schemas.FriendRead]:
+def list_friends(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[schemas.FriendRead]:
+    datastore = get_datastore(db)
     logger.bind(user_id=current_user.id).debug("Listing friends")
     friends = datastore.list_friends(current_user.id)
     return [schemas.FriendRead.model_validate(friend) for friend in friends]
@@ -22,8 +26,9 @@ def list_friends(current_user: User = Depends(get_current_user), datastore = Dep
 def create_friend(
     payload: schemas.FriendCreate,
     current_user: User = Depends(get_current_user),
-    datastore = Depends(get_datastore),
+    db: Session = Depends(get_db),
 ) -> schemas.FriendRead:
+    datastore = get_datastore(db)
     friend = datastore.create_friend(
         current_user.id,
         name=payload.name,
@@ -38,8 +43,9 @@ def create_friend(
 def delete_friend(
     friend_id: int,
     current_user: User = Depends(get_current_user),
-    datastore = Depends(get_datastore),
+    db: Session = Depends(get_db),
 ) -> Response:
+    datastore = get_datastore(db)
     deleted = datastore.delete_friend(friend_id, current_user.id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found")

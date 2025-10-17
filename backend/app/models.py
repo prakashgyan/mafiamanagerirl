@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import List
+from pydantic import BaseModel, ConfigDict
 
 
 def utc_now() -> datetime:
@@ -29,24 +29,25 @@ class GamePhase(str, enum.Enum):
     NIGHT = "night"
 
 
-@dataclass(slots=True)
-class User:
+class User(BaseModel):
     id: int
     username: str
     password_hash: str
 
+    model_config = ConfigDict(from_attributes=True)
 
-@dataclass(slots=True)
-class Friend:
+
+class Friend(BaseModel):
     id: int
     user_id: int
     name: str
     description: str | None = None
     image: str | None = None
 
+    model_config = ConfigDict(from_attributes=True)
 
-@dataclass(slots=True)
-class Game:
+
+class Game(BaseModel):
     id: int
     host_id: int
     status: GameStatus = GameStatus.PENDING
@@ -54,9 +55,10 @@ class Game:
     current_round: int = 1
     winning_team: str | None = None
 
+    model_config = ConfigDict(from_attributes=True)
 
-@dataclass(slots=True)
-class Player:
+
+class Player(BaseModel):
     id: int
     game_id: int
     name: str
@@ -65,9 +67,10 @@ class Player:
     avatar: str | None = None
     friend_id: int | None = None
 
+    model_config = ConfigDict(from_attributes=True)
 
-@dataclass(slots=True)
-class Log:
+
+class Log(BaseModel):
     id: int
     game_id: int
     round: int
@@ -75,12 +78,13 @@ class Log:
     message: str
     timestamp: datetime
 
+    model_config = ConfigDict(from_attributes=True)
 
-@dataclass(slots=True)
-class GameAggregate:
+
+class GameAggregate(BaseModel):
     game: Game
-    players: List[Player] = field(default_factory=list)
-    logs: List[Log] = field(default_factory=list)
+    players: List[Player]
+    logs: List[Log]
 
     @property
     def id(self) -> int:
@@ -105,3 +109,5 @@ class GameAggregate:
     @property
     def host_id(self) -> int:
         return self.game.host_id
+
+    model_config = ConfigDict(from_attributes=True)

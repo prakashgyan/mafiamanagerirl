@@ -3,12 +3,14 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, Request, status
 from loguru import logger
 
-from .database import get_datastore
+from .database import get_datastore, get_db
 from .models import User
 from .security import AUTH_COOKIE_NAME, decode_token
+from sqlalchemy.orm import Session
 
 
-def get_current_user(request: Request, datastore = Depends(get_datastore)) -> User:
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    datastore = get_datastore(db)
     token = request.cookies.get(AUTH_COOKIE_NAME)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")

@@ -6,16 +6,19 @@ from fastapi import APIRouter, Depends, status
 from loguru import logger
 
 from .. import schemas
-from ..database import Datastore, get_datastore
+from ..database import get_db
 from ..deps import get_current_user
 from ..models import GameStatus, User
 from ..services.game_service import GameService
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/games", tags=["games"])
 
 
-def get_game_service(datastore: Datastore = Depends(get_datastore)) -> GameService:
-    return GameService(datastore)
+def get_game_service(db: Session = Depends(get_db)) -> GameService:
+    from ..database import get_datastore
+
+    return GameService(get_datastore(db))
 
 
 @router.get("/", response_model=list[schemas.GameRead])
