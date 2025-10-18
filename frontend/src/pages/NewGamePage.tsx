@@ -429,31 +429,33 @@ const NewGamePage = () => {
 
             <div className="grid gap-4 sm:grid-cols-3">
               {ROLE_KEYS.map((role) => (
-                <label
+                <div
                   key={role}
-                  className="space-y-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-5 shadow-sm shadow-black/20 transition hover:border-sky-400/60"
+                  role="group"
+                  aria-label={`${role} role count`}
+                  className="flex min-h-[150px] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-5 text-center shadow-sm shadow-black/20 transition hover:border-sky-400/60"
                 >
-                  <span className="block text-sm font-semibold text-white">{role}</span>
+                  <span className="text-sm font-semibold text-white">{role}</span>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => adjustRoleCount(role, -1)}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
                       aria-label={`Decrease ${role}`}
                     >
                       -
                     </button>
-                    <span className="min-w-[2.5rem] text-center text-lg font-semibold text-white">{roleCounts[role] ?? 0}</span>
+                    <span className="min-w-[2.75rem] text-center text-xl font-semibold text-white">{roleCounts[role] ?? 0}</span>
                     <button
                       type="button"
                       onClick={() => adjustRoleCount(role, 1)}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
                       aria-label={`Increase ${role}`}
                     >
                       +
                     </button>
                   </div>
-                </label>
+                </div>
               ))}
             </div>
             <p className="mt-4 text-xs text-slate-400">
