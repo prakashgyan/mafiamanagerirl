@@ -554,19 +554,19 @@ class InMemoryDataStore:
         return GameAggregate(game=game, players=players, logs=logs)
 
 _engine = None
-_SessionLocal = None
+SessionLocal = None
 
 def init_db():
-    global _engine, _SessionLocal
+    global _engine, SessionLocal
     settings = get_settings()
     _engine = create_engine(settings.database_url)
-    _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     Base.metadata.create_all(bind=_engine)
 
 def get_db():
-    if _SessionLocal is None:
+    if SessionLocal is None:
         raise Exception("Database not initialized. Call init_db() first.")
-    db = _SessionLocal()
+    db = SessionLocal()
     try:
         yield db
     finally:
