@@ -17,6 +17,46 @@ const defaultRoleCounts: RoleCounts = {
   Jester: 0,
 };
 
+const getSuggestedRoleCounts = (playerCount: number): RoleCounts => {
+  if (playerCount <= 0) {
+    return { ...defaultRoleCounts };
+  }
+
+  const mafia = Math.max(1, Math.floor((playerCount + 2) / 4));
+  const detective = playerCount >= 5 ? 1 : 0;
+  const doctor = playerCount >= 6 ? 1 : 0;
+  const jester = playerCount >= 9 ? 1 : 0;
+
+  const base: RoleCounts = {
+    Mafia: mafia,
+    Detective: detective,
+    Doctor: doctor,
+    Jester: jester,
+    Villager: 0,
+  };
+
+  let remaining = playerCount - (mafia + detective + doctor + jester);
+
+  if (remaining < 0) {
+    const adjustableRoles: Array<keyof RoleCounts> = ["Jester", "Doctor", "Detective", "Mafia"];
+    for (const role of adjustableRoles) {
+      while (remaining < 0) {
+        const minimum = role === "Mafia" ? 1 : 0;
+        if (base[role] > minimum) {
+          base[role] -= 1;
+          remaining += 1;
+        } else {
+          break;
+        }
+      }
+    }
+  }
+
+  base.Villager = Math.max(0, remaining);
+
+  return base;
+};
+
 const NewGamePage = () => {
   const navigate = useNavigate();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -25,6 +65,7 @@ const NewGamePage = () => {
   const [customPlayers, setCustomPlayers] = useState<string[]>([]);
   const [customPlayerAvatars, setCustomPlayerAvatars] = useState<Record<string, string>>({});
   const [roleCounts, setRoleCounts] = useState<RoleCounts>(defaultRoleCounts);
+  const [hasManualRoleEdits, setHasManualRoleEdits] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -97,6 +138,39 @@ const NewGamePage = () => {
 
   const rerollCustomAvatar = (name: string) => {
     setCustomPlayerAvatars((prev) => ({ ...prev, [name]: getRandomAnimalAvatar() }));
+  };
+
+  useEffect(() => {
+    if (totalPlayers <= 0) {
+      setRoleCounts(defaultRoleCounts);
+      setHasManualRoleEdits(false);
+      return;
+    }
+
+    if (!hasManualRoleEdits) {
+      setRoleCounts((prev) => {
+        const suggested = getSuggestedRoleCounts(totalPlayers);
+        const matches = ROLE_KEYS.every((role) => prev[role] === suggested[role]);
+        return matches ? prev : suggested;
+      });
+    }
+  }, [totalPlayers, hasManualRoleEdits]);
+
+  const adjustRoleCount = (role: (typeof ROLE_KEYS)[number], delta: number) => {
+    setRoleCounts((prev) => {
+      const nextValue = Math.max(0, (prev[role] ?? 0) + delta);
+      if (nextValue === prev[role]) {
+        return prev;
+      }
+      return { ...prev, [role]: nextValue };
+    });
+    setHasManualRoleEdits(true);
+  };
+
+  const applySuggestedRoles = () => {
+    const suggested = getSuggestedRoleCounts(totalPlayers);
+    setRoleCounts(suggested);
+    setHasManualRoleEdits(false);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -332,15 +406,25 @@ const NewGamePage = () => {
                 <h2 className="text-xl font-semibold text-white">Role distribution</h2>
                 <p className="text-sm text-slate-400">Balance your factions and keep the mystery tight.</p>
               </div>
-              <span
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                  slotsMatch
-                    ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-200"
-                    : "border-rose-400/50 bg-rose-500/10 text-rose-200"
-                }`}
-              >
-                {totalPlayers} players / {totalRoles} slots
-              </span>
+              <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={applySuggestedRoles}
+                  disabled={totalPlayers <= 0}
+                  className="inline-flex items-center justify-center rounded-full border border-sky-400/50 bg-sky-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:border-sky-300/70 hover:text-sky-50 disabled:cursor-not-allowed disabled:border-slate-700/60 disabled:bg-slate-800/70 disabled:text-slate-400"
+                >
+                  Use suggested
+                </button>
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                    slotsMatch
+                      ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-200"
+                      : "border-rose-400/50 bg-rose-500/10 text-rose-200"
+                  }`}
+                >
+                  {totalPlayers} players / {totalRoles} slots
+                </span>
+              </div>
             </header>
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -350,15 +434,25 @@ const NewGamePage = () => {
                   className="space-y-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-5 shadow-sm shadow-black/20 transition hover:border-sky-400/60"
                 >
                   <span className="block text-sm font-semibold text-white">{role}</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={roleCounts[role] ?? 0}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      setRoleCounts((prev) => ({ ...prev, [role]: Number(event.target.value) }))
-                    }
-                    className="w-full rounded-xl border border-slate-700/70 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => adjustRoleCount(role, -1)}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
+                      aria-label={`Decrease ${role}`}
+                    >
+                      -
+                    </button>
+                    <span className="min-w-[2.5rem] text-center text-lg font-semibold text-white">{roleCounts[role] ?? 0}</span>
+                    <button
+                      type="button"
+                      onClick={() => adjustRoleCount(role, 1)}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
+                      aria-label={`Increase ${role}`}
+                    >
+                      +
+                    </button>
+                  </div>
                 </label>
               ))}
             </div>
