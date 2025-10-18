@@ -25,7 +25,7 @@ VITE_WS_BASE=ws://localhost:8000
 EOF
 ```
 
-- `VITE_API_BASE` – base URL for REST calls. Defaults to the local FastAPI server in dev and `https://api.mafiadesk.com` in production builds.
+- `VITE_API_BASE` – base URL for REST calls. Defaults to the local FastAPI server in dev and `https://backend.mafiadesk.com` in production builds.
 - `VITE_WS_BASE` – WebSocket origin used by the live dashboard. If omitted, the app infers it from `VITE_API_BASE`/window origin.
 
 ## Development workflow

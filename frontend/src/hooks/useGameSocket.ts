@@ -51,6 +51,59 @@ type Options = {
   onMessage?: (message: GameSocketMessage) => void;
 };
 
+const WS_FALLBACKS = {
+  development: "ws://localhost:8000",
+  production: "wss://backend.mafiadesk.com",
+} as const;
+
+const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
+
+const isLocalOrigin = (origin: string) =>
+  origin.includes("localhost") || origin.includes("127.0.0.1");
+
+const inferWebSocketFromHttp = (maybeHttpBase: string) => {
+  try {
+    const url = new URL(maybeHttpBase);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    return stripTrailingSlash(url.toString());
+  } catch {
+    return "";
+  }
+};
+
+const resolveWebSocketBase = () => {
+  const fromEnv = import.meta.env.VITE_WS_BASE?.trim();
+  if (fromEnv) {
+    return stripTrailingSlash(fromEnv);
+  }
+
+  const inferredFromApi = import.meta.env.VITE_API_BASE?.trim();
+  if (inferredFromApi) {
+    const derived = inferWebSocketFromHttp(inferredFromApi);
+    if (derived) {
+      return derived;
+    }
+  }
+
+  if (import.meta.env.DEV) {
+    return stripTrailingSlash(WS_FALLBACKS.development);
+  }
+
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin.toLowerCase();
+    if (isLocalOrigin(origin)) {
+      return stripTrailingSlash(WS_FALLBACKS.development);
+    }
+
+    if (origin.includes("backend.mafiadesk.com")) {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return stripTrailingSlash(`${protocol}//${window.location.host}`);
+    }
+  }
+
+  return stripTrailingSlash(WS_FALLBACKS.production);
+};
+
 export const useGameSocket = (gameId: number | null, options: Options = {}) => {
   const { enabled = true, onMessage } = options;
   const handlerRef = useRef<Options["onMessage"]>(onMessage);
@@ -61,10 +114,7 @@ export const useGameSocket = (gameId: number | null, options: Options = {}) => {
       return;
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const defaultWsBase = "wss://api.mafiadesk.com";
-    const rawWsBase = import.meta.env.VITE_WS_BASE;
-    const wsBase = (rawWsBase || defaultWsBase).replace(/\/+$/, "");
+    const wsBase = resolveWebSocketBase();
     const socket = new WebSocket(`${wsBase}/ws/game/${gameId}`);
 
     socket.onmessage = (event) => {

@@ -58,30 +58,39 @@ export type GameActionPayload = {
 
 const API_FALLBACKS = {
   development: "http://localhost:8000",
-  production: "https://api.mafiadesk.com",
+  production: "https://backend.mafiadesk.com",
 } as const;
+
+const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
+
+const isLocalHost = (origin: string) =>
+  origin.includes("localhost") || origin.includes("127.0.0.1");
 
 const resolveApiBase = () => {
   const fromEnv = import.meta.env.VITE_API_BASE?.trim();
   if (fromEnv) {
-    return fromEnv;
+    return stripTrailingSlash(fromEnv);
   }
 
   if (import.meta.env.DEV) {
-    return API_FALLBACKS.development;
+    return stripTrailingSlash(API_FALLBACKS.development);
   }
 
   if (typeof window !== "undefined") {
     const origin = window.location.origin.toLowerCase();
-    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
-      return API_FALLBACKS.development;
+    if (isLocalHost(origin)) {
+      return stripTrailingSlash(API_FALLBACKS.development);
+    }
+
+    if (origin.includes("backend.mafiadesk.com")) {
+      return stripTrailingSlash(`${window.location.protocol}//${window.location.host}`);
     }
   }
 
-  return API_FALLBACKS.production;
+  return stripTrailingSlash(API_FALLBACKS.production);
 };
 
-const API_BASE = resolveApiBase().replace(/\/+$/, "");
+const API_BASE = resolveApiBase();
 
 const buildUrl = (path: string) => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
