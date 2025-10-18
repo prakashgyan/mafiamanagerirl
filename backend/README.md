@@ -6,8 +6,7 @@ This directory contains the FastAPI application that powers MafiaDesk. It expose
 
 - Python 3.11 or newer
 - pip (comes with Python) and a virtual environment tool of your choice
-- Access to Google Firestore (either a project or the local emulator)
-- A service-account credential with Firestore permissions (`home-projects-access.json` is provided for local work)
+- A reachable PostgreSQL instance (local Docker container or hosted service)
 
 ## Installation
 
@@ -27,10 +26,12 @@ cat <<'EOF' > .env
 APP_SECRET_KEY=change-me
 APP_ACCESS_TOKEN_EXPIRE_MINUTES=1440
 APP_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-APP_FIRESTORE_PROJECT_ID=mafiadesk
-APP_FIRESTORE_CREDENTIALS_FILE=home-projects-access.json
-# If you're using the local emulator instead of a live project, uncomment:
-# APP_FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+APP_DATABASE_HOST=localhost
+APP_DATABASE_PORT=5432
+APP_DATABASE_USER=postgres
+APP_DATABASE_PASSWORD=postgres
+APP_DATABASE_NAME=mafiadesk
+# APP_DATABASE_SSL_MODE=require
 # Optional cookies tuning for custom domains
 # APP_AUTH_COOKIE_DOMAIN=example.com
 # APP_AUTH_COOKIE_SECURE=true
@@ -38,27 +39,7 @@ APP_FIRESTORE_CREDENTIALS_FILE=home-projects-access.json
 EOF
 ```
 
-> Secrets such as `APP_SECRET_KEY` should be replaced before deploying. The default credentials path points at the repo-level `home-projects-access.json`; adjust it to match your environment or set `GOOGLE_APPLICATION_CREDENTIALS` directly.
-
-### Firestore composite indexes
-
-All production queries rely on Firestore composite indexes that are tracked in `backend/firestore.indexes.json`. Deploy them to your project before running the FastAPI service against a live Firestore instance:
-
-```bash
-cd backend
-gcloud firestore indexes composite create \
-  --database=mafiadesk \
-  --config=firestore.indexes.json \
-  --project="$APP_FIRESTORE_PROJECT_ID"
-```
-
-If you prefer the Firebase CLI, run the following once you have a matching `firebase.json` pointing at your project:
-
-```bash
-firebase deploy --only firestore:indexes
-```
-
-When using the Firestore emulator, copy the same file into your emulator config or load it with `gcloud beta emulators firestore start --import`.
+> Secrets such as `APP_SECRET_KEY` and database credentials should be replaced before deploying. The example values above assume a local PostgreSQL server.
 
 ## Running the server
 
@@ -78,7 +59,7 @@ Key routes:
 - `POST /games/{id}/sync_night` – push night actions to public displays.
 - `WebSocket /ws/game/{id}` – broadcast real-time game state to dashboards.
 
-Authentication uses signed JWT cookies. The WebSocket manager keeps per-game rooms and rebroadcasts serialized state when Firestore documents change.
+Authentication uses signed JWT cookies. The WebSocket manager keeps per-game rooms and rebroadcasts serialized state whenever game data changes.
 
 ## Logging
 
@@ -96,10 +77,9 @@ Data-layer operations and key API handlers emit structured debug events. Sensiti
 pytest
 ```
 
-The test suite swaps the Firestore implementation for an in-memory datastore so it can execute end-to-end flows without touching external services.
+The test suite swaps the PostgreSQL-backed datastore for an in-memory implementation so it can execute end-to-end flows without touching external services.
 
 ## Data persistence notes
 
-- Production reads and writes go through Google Firestore collections. IDs remain numeric by using counter documents.
-- Credentials are loaded from the configured service-account JSON. Keep this file out of version control in real deployments.
-- For development or CI without cloud access, point `APP_FIRESTORE_EMULATOR_HOST` at a running Firestore emulator instance.
+- Production reads and writes go through PostgreSQL using SQLAlchemy models defined in `app/database.py`.
+- Set the connection string through `APP_DATABASE_URL` or individual `APP_DATABASE_*` environment variables.

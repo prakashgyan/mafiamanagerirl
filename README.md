@@ -7,7 +7,7 @@ Modern companion app for running in-person Mafia social deduction nights. It com
 - **Host-first workflow** – sign up, curate a reusable friend roster, and spin up new games in minutes.
 - **Role & phase management** – assign factions, resolve day/night actions, and progress rounds with guardrails.
 - **Live event feed** – instant updates flow to connected clients over WebSockets for dashboards and public displays.
-- **Persistent history** – SQLite keeps games, players, and logs so you can revisit outcomes later.
+- **Persistent history** – PostgreSQL (configurable via env vars) keeps games, players, and logs so you can revisit outcomes later.
 - **Type-safe UI** – React + TypeScript + Tailwind deliver a responsive control room tailored for tablets and laptops.
 
 ## Tech stack
@@ -22,7 +22,7 @@ Modern companion app for running in-person Mafia social deduction nights. It com
 
 | Path | Purpose |
 | --- | --- |
-| `backend/` | FastAPI application, Firestore integration, business logic, and API tests. See [`backend/README.md`](backend/README.md). |
+| `backend/` | FastAPI application, PostgreSQL persistence layer, business logic, and API tests. See [`backend/README.md`](backend/README.md). |
 | `frontend/` | Vite + React web client used by game hosts. See [`frontend/README.md`](frontend/README.md). |
 
 ## Quick start
@@ -62,14 +62,12 @@ Visit [http://localhost:5173](http://localhost:5173) in your browser (the Vite d
 
 - **Backend** – run `pytest` from `backend/` to execute the end-to-end API test suite.
 - **Frontend** – run `npm run lint` for TypeScript/ESLint checks; `npm run build` generates a production bundle.
-- **Database** – uses Google Firestore for data persistence. See `backend/.env` for Firestore configuration options.
+- **Database** – uses PostgreSQL via SQLAlchemy. See `backend/.env` for connection settings.
 
 ## Environments
 
 The FastAPI settings system reads variables with the `APP_` prefix (see [`backend/app/config.py`](backend/app/config.py)). The web client reads Vite-style env vars prefixed with `VITE_`.
 
-
-APP_FIRESTORE_PROJECT_ID=mafiadesk
 
 - Keep backend tests green (`pytest`) and frontend lint clean before committing.
 - Consider adding production deployment notes (containerization, migrations) once the hosting target is chosen.
