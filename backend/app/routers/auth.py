@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from loguru import logger
@@ -139,6 +139,7 @@ def demo_login(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Demo login is misconfigured")
 
     now = utc_now()
+    now_naive = now.replace(tzinfo=None)
     ttl = timedelta(hours=settings.demo_user_ttl_hours)
 
     user_db = db.query(UserDb).filter(UserDb.username == username).first()
@@ -154,13 +155,15 @@ def demo_login(
         logger.bind(username=username).info("Creating demo user account")
 
     if state is None:
-        state = DemoUserStateDb(username=username, seeded_at=now)
+        state = DemoUserStateDb(username=username, seeded_at=now_naive)
         db.add(state)
         needs_reset = True
     else:
         seeded_at = getattr(state, "seeded_at", None)
-        if isinstance(seeded_at, datetime) and seeded_at + ttl <= now:
-            needs_reset = True
+        if isinstance(seeded_at, datetime):
+            seeded_at_utc = seeded_at.replace(tzinfo=UTC) if seeded_at.tzinfo is None else seeded_at.astimezone(UTC)
+            if seeded_at_utc + ttl <= now:
+                needs_reset = True
 
     current_hash = getattr(user_db, "password_hash", "")
     if not isinstance(current_hash, str) or not verify_password(password, current_hash):
@@ -169,7 +172,8 @@ def demo_login(
     if needs_reset:
         logger.bind(username=username).info("Resetting demo user state")
         _reset_demo_account(db, user_db, password)
-        setattr(state, "seeded_at", now)
+        if state is not None:
+            setattr(state, "seeded_at", now_naive)
 
     db.commit()
     db.refresh(user_db)
