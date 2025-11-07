@@ -62,7 +62,7 @@ const AuthPage = () => {
             src={logoImage}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute -top-10 right-[-5%] h-auto w-[420px] rotate-45 opacity-15"
+            className="pointer-events-none absolute -top-10 right-[-2%] h-auto w-[720px] rotate-0 opacity-20"
           />
           <section className="relative z-10 flex flex-col justify-center gap-8 text-left">
             <div className="space-y-4">
