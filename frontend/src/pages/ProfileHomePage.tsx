@@ -50,6 +50,7 @@ const ProfileHomePage = () => {
 
   const pendingGames = useMemo(() => games.filter((game) => game.status === "pending"), [games]);
   const activeGames = useMemo(() => games.filter((game) => game.status === "active"), [games]);
+  const ongoingGames = useMemo(() => [...pendingGames, ...activeGames], [pendingGames, activeGames]);
   const finishedGames = useMemo(() => games.filter((game) => game.status === "finished"), [games]);
 
   const handleAddFriend = async () => {
@@ -137,70 +138,58 @@ const ProfileHomePage = () => {
                 </Link>
               </header>
               <div className="space-y-4">
-                {[...pendingGames, ...activeGames].length === 0 && !loading && (
+                {ongoingGames.length === 0 && !loading && (
                   <p className="text-sm text-slate-400">No games in progress. Start a new one!</p>
                 )}
                 {loading && <p className="text-sm text-slate-400">Loading games…</p>}
-                {pendingGames.map((game) => (
-                  <div
-                    key={game.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/80 transition hover:border-sky-400"
-                  >
-                    <button
-                      type="button"
-                      className="w-full rounded-2xl px-5 py-4 text-left"
-                      onClick={() => navigate(`/games/${game.id}/assign`)}
+                {ongoingGames.map((game) => {
+                  const isPending = game.status === "pending";
+                  const statusLabel = isPending ? "Pending" : "Active";
+                  const badgeStyles = isPending
+                    ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
+                    : "border-emerald-400/40 bg-emerald-400/10 text-emerald-200";
+                  const hoverBorder = isPending ? "hover:border-sky-400" : "hover:border-emerald-400";
+                  const continuePath = isPending ? `/games/${game.id}/assign` : `/games/${game.id}/manage`;
+                  const detailText = isPending
+                    ? "Awaiting role assignment"
+                    : `${game.current_phase === "day" ? "Day" : "Night"} ${game.current_round}`;
+
+                  return (
+                    <div
+                      key={game.id}
+                      className={`rounded-2xl border border-slate-800 bg-slate-900/80 px-5 py-4 transition ${hoverBorder}`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-base font-medium text-white">Game #{game.id}</span>
-                        <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
-                          Pending
-                        </span>
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="text-base font-medium text-white">Game #{game.id}</span>
+                          <span
+                            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeStyles}`}
+                          >
+                            {statusLabel}
+                          </span>
+                          <span className="text-sm text-slate-400">{detailText}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => navigate(continuePath)}
+                            className="rounded-lg bg-sky-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-900 shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
+                          >
+                            Continue
+                          </button>
+                          <Link
+                            to={`/games/${game.id}/public`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-slate-700/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-slate-400 hover:text-white"
+                          >
+                            Public View
+                          </Link>
+                        </div>
                       </div>
-                      <p className="mt-1 text-sm text-slate-400">Awaiting role assignment</p>
-                    </button>
-                    <div className="flex justify-end border-t border-slate-800/70 px-5 py-3">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/games/${game.id}/public`)}
-                        className="rounded-lg border border-slate-700/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-sky-400 hover:text-slate-100"
-                      >
-                        Public View
-                      </button>
                     </div>
-                  </div>
-                ))}
-                {activeGames.map((game) => (
-                  <div
-                    key={game.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/80 transition hover:border-emerald-400"
-                  >
-                    <button
-                      type="button"
-                      className="w-full rounded-2xl px-5 py-4 text-left"
-                      onClick={() => navigate(`/games/${game.id}/manage`)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-base font-medium text-white">Game #{game.id}</span>
-                        <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-200">
-                          Active
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-400">
-                        {game.current_phase === "day" ? "Day" : "Night"} {game.current_round}
-                      </p>
-                    </button>
-                    <div className="flex justify-end border-t border-slate-800/70 px-5 py-3">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/games/${game.id}/public`)}
-                        className="rounded-lg border border-slate-700/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-emerald-400 hover:text-slate-100"
-                      >
-                        Public View
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

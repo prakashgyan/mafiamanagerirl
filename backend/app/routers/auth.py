@@ -197,3 +197,21 @@ def logout(response: Response, request: Request) -> Response:
 @router.get("/me", response_model=schemas.UserRead)
 def get_me(user: User = Depends(get_current_user)) -> schemas.UserRead:
     return schemas.UserRead.model_validate(user)
+
+
+@router.patch("/me/preferences", response_model=schemas.UserRead)
+def update_preferences(
+    payload: schemas.UserPreferencesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.UserRead:
+    datastore = get_datastore(db)
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        return schemas.UserRead.model_validate(current_user)
+
+    updated = datastore.update_user(current_user.id, **changes)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    return schemas.UserRead.model_validate(updated)

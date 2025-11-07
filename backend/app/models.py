@@ -33,6 +33,7 @@ class User(BaseModel):
     id: int
     username: str
     password_hash: str
+    public_auto_sync_enabled: bool = True
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -64,6 +65,7 @@ class Player(BaseModel):
     name: str
     role: str | None = None
     is_alive: bool = True
+    public_is_alive: bool = True
     avatar: str | None = None
     friend_id: int | None = None
 

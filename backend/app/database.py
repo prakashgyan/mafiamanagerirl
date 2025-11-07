@@ -23,6 +23,7 @@ class UserDb(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     password_hash = Column(String)
+    public_auto_sync_enabled = Column(Boolean, default=True, nullable=False)
 
 class FriendDb(Base):
     __tablename__ = "friends"
@@ -52,6 +53,7 @@ class PlayerDb(Base):
     name = Column(String)
     role = Column(String, nullable=True)
     is_alive = Column(Boolean, default=True)
+    public_is_alive = Column(Boolean, default=True, nullable=False)
     avatar = Column(String, nullable=True)
     friend_id = Column(Integer, ForeignKey("friends.id"), nullable=True)
     game = relationship("GameDb", back_populates="players")
@@ -78,6 +80,7 @@ class Datastore(Protocol):
     def get_user_by_username(self, username: str) -> User | None: ...
     def get_user_by_id(self, user_id: int) -> User | None: ...
     def create_user(self, username: str, password_hash: str) -> User: ...
+    def update_user(self, user_id: int, **changes: Any) -> User | None: ...
     def list_friends(self, user_id: int) -> List[Friend]: ...
     def create_friend(self, user_id: int, *, name: str, description: str | None, image: str | None) -> Friend: ...
     def delete_friend(self, friend_id: int, user_id: int) -> bool: ...
@@ -150,6 +153,17 @@ class PostgresDataStore:
     def create_user(self, username: str, password_hash: str) -> User:
         user_db = UserDb(username=username, password_hash=password_hash)
         self.session.add(user_db)
+        self.session.commit()
+        self.session.refresh(user_db)
+        return User.from_orm(user_db)
+
+    @log_call("datastore.postgres")
+    def update_user(self, user_id: int, **changes: Any) -> User | None:
+        user_db = self.session.query(UserDb).filter(UserDb.id == user_id).first()
+        if not user_db:
+            return None
+        for key, value in changes.items():
+            setattr(user_db, key, value)
         self.session.commit()
         self.session.refresh(user_db)
         return User.from_orm(user_db)
@@ -273,6 +287,8 @@ class PostgresDataStore:
         player_db = PlayerDb(
             game_id=game_id,
             name=name,
+            is_alive=True,
+            public_is_alive=True,
             avatar=avatar,
             friend_id=friend_id,
         )
@@ -390,6 +406,15 @@ class InMemoryDataStore:
         return user
 
     @log_call("datastore.memory")
+    def update_user(self, user_id: int, **changes: Any) -> User | None:
+        user = self._users.get(user_id)
+        if not user:
+            return None
+        updated_user = user.model_copy(update=changes)
+        self._users[user_id] = updated_user
+        return updated_user
+
+    @log_call("datastore.memory")
     def list_friends(self, user_id: int) -> List[Friend]:
         friends = [friend for friend in self._friends.values() if friend.user_id == user_id]
         return sorted(friends, key=lambda f: f.name.lower())
@@ -499,6 +524,7 @@ class InMemoryDataStore:
             name=name,
             role=None,
             is_alive=True,
+            public_is_alive=True,
             avatar=avatar,
             friend_id=friend_id,
         )

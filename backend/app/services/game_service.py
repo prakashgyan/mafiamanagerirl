@@ -23,12 +23,15 @@ def random_animal_avatar() -> str:
     return random.choice(ANIMAL_AVATARS)
 
 
-def _serialize_player(player: Player) -> dict:
+def _serialize_player(player: Player, *, use_public_visibility: bool) -> dict:
+    visible_is_alive = player.public_is_alive if use_public_visibility else player.is_alive
     return {
         "id": player.id,
         "name": player.name,
         "role": player.role,
-        "is_alive": player.is_alive,
+        "is_alive": visible_is_alive,
+        "public_is_alive": player.public_is_alive,
+        "actual_is_alive": player.is_alive,
         "avatar": player.avatar,
         "friend_id": player.friend_id,
     }
@@ -57,16 +60,18 @@ class GameManager:
             "save": self._handle_save_action,
             "investigate": self._handle_investigate_action,
         }
+        host = self.datastore.get_user_by_id(self.bundle.host_id)
+        self.public_auto_sync_enabled = getattr(host, "public_auto_sync_enabled", True)
 
     @classmethod
     def load(cls, game_id: int, datastore: Datastore, user: Optional[User] = None) -> "GameManager":
         bundle = datastore.get_game_bundle(game_id)
         if not bundle:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
-        manager = cls(bundle, datastore)
+        game_manager = cls(bundle, datastore)
         if user:
-            manager.ensure_owner(user)
-        return manager
+            game_manager.ensure_owner(user)
+        return game_manager
 
     @property
     def id(self) -> int:
@@ -116,7 +121,11 @@ class GameManager:
             "phase": self.bundle.current_phase.value,
             "round": self.bundle.current_round,
             "winning_team": self.bundle.winning_team,
-            "players": [_serialize_player(p) for p in self.bundle.players],
+            "public_auto_sync_enabled": self.public_auto_sync_enabled,
+            "players": [
+                _serialize_player(p, use_public_visibility=not self.public_auto_sync_enabled)
+                for p in self.bundle.players
+            ],
             "logs": [_serialize_log(log) for log in self.bundle.logs],
         }
         if payload:
@@ -155,12 +164,28 @@ class GameManager:
         self.append_log(new_log)
         self.broadcast("game_started")
 
+    def _replace_player(self, player: Player) -> None:
+        self.player_map[player.id] = player
+        for index, existing in enumerate(self.bundle.players):
+            if existing.id == player.id:
+                self.bundle.players[index] = player
+                break
+
+    def _update_player_alive(self, player: Player, alive: bool, *, force_public_sync: bool = False) -> Player:
+        updates: dict[str, object] = {"is_alive": alive}
+        if self.public_auto_sync_enabled or force_public_sync:
+            updates["public_is_alive"] = alive
+        updated_player = self.datastore.update_player(player.id, self.id, **updates)
+        if not updated_player:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+        self._replace_player(updated_player)
+        return updated_player
+
     def _handle_vote_action(self, action: schemas.GameActionRequest) -> str:
         target_player = self.require_target(action)
-        self.datastore.update_player(target_player.id, self.id, is_alive=False)
-        target_player.is_alive = False
-        message = action.note or f"{target_player.name} was voted out."
-        jester_win = resolve_vote_elimination(target_player)
+        updated_player = self._update_player_alive(target_player, False, force_public_sync=True)
+        message = action.note or f"{updated_player.name} was voted out."
+        jester_win = resolve_vote_elimination(updated_player)
         if jester_win:
             updated_game = self.datastore.update_game(
                 self.id, status=GameStatus.FINISHED, winning_team=jester_win
@@ -171,15 +196,13 @@ class GameManager:
 
     def _handle_kill_action(self, action: schemas.GameActionRequest) -> str:
         target_player = self.require_target(action)
-        self.datastore.update_player(target_player.id, self.id, is_alive=False)
-        target_player.is_alive = False
-        return action.note or f"{target_player.name} was killed during the night."
+        updated_player = self._update_player_alive(target_player, False)
+        return action.note or f"{updated_player.name} was killed during the night."
 
     def _handle_save_action(self, action: schemas.GameActionRequest) -> str:
         target_player = self.require_target(action)
-        self.datastore.update_player(target_player.id, self.id, is_alive=True)
-        target_player.is_alive = True
-        return action.note or f"{target_player.name} was saved by the doctor."
+        updated_player = self._update_player_alive(target_player, True)
+        return action.note or f"{updated_player.name} was saved by the doctor."
 
     def _handle_investigate_action(self, action: schemas.GameActionRequest) -> str:
         target_player = self.require_target(action)
@@ -283,6 +306,19 @@ class GameManager:
         if self.bundle.status != GameStatus.ACTIVE:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Game is not active")
 
+        revealed_players: list[int] = []
+        for player in list(self.bundle.players):
+            public_state = getattr(player, "public_is_alive", player.is_alive)
+            if public_state != player.is_alive:
+                updated_player = self.datastore.update_player(
+                    player.id,
+                    self.id,
+                    public_is_alive=player.is_alive,
+                )
+                if updated_player:
+                    self._replace_player(updated_player)
+                    revealed_players.append(player.id)
+
         log_entry = self.datastore.add_log(
             self.id,
             round=self.bundle.current_round,
@@ -290,7 +326,7 @@ class GameManager:
             message="Night events synced to public view.",
         )
         self.append_log(log_entry)
-        self.broadcast("night_synced")
+        self.broadcast("night_synced", {"revealed_player_ids": revealed_players})
 
 
 class GameService:

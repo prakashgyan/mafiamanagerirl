@@ -1,6 +1,7 @@
 export type User = {
   id: number;
   username: string;
+  public_auto_sync_enabled: boolean;
 };
 
 export type Friend = {
@@ -15,6 +16,8 @@ export type Player = {
   name: string;
   role?: string | null;
   is_alive: boolean;
+  public_is_alive?: boolean;
+  actual_is_alive?: boolean;
   avatar?: string | null;
   friend_id?: number | null;
 };
@@ -132,6 +135,8 @@ export const api = {
   demoLogin: () => apiFetch<User>("/auth/demo-login", { method: "POST" }),
   logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
   me: () => apiFetch<User>("/auth/me"),
+  updatePreferences: (payload: { public_auto_sync_enabled?: boolean }) =>
+    apiFetch<User>("/auth/me/preferences", { method: "PATCH", body: JSON.stringify(payload) }),
 
   listFriends: () => apiFetch<Friend[]>("/friends/"),
   createFriend: (payload: { name: string; description?: string; image?: string | null }) =>

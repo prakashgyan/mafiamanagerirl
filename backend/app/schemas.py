@@ -25,8 +25,13 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
     id: int
+    public_auto_sync_enabled: bool = True
 
     model_config = {"from_attributes": True}
+
+
+class UserPreferencesUpdate(BaseModel):
+    public_auto_sync_enabled: Optional[bool] = None
 
 
 class LoginRequest(BaseModel):
@@ -61,6 +66,7 @@ class PlayerBase(BaseModel):
     name: str
     role: Optional[str] = None
     is_alive: bool = True
+    public_is_alive: bool = True
     avatar: Optional[str] = None
     friend_id: Optional[int] = None
 

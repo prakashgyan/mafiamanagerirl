@@ -4,8 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useGameSocket } from "../hooks/useGameSocket";
 import { api, GameDetail, GamePhase, GameStatus } from "../services/api";
 import { useOptionalAuth } from "../context/AuthContext";
-import PlayerAvatar from "../components/PlayerAvatar";
 import BackdropLogo from "../components/BackdropLogo";
+import { normalizeAvatar } from "../utils/avatarOptions";
 
 // Typewriter Component
 const TypewriterText = ({ text, isDay }: { text: string; isDay: boolean }) => {
@@ -284,6 +284,8 @@ const PublicViewPage = () => {
             name: player.name,
             role: player.role,
             is_alive: player.is_alive,
+            public_is_alive: player.public_is_alive,
+            actual_is_alive: player.actual_is_alive,
             avatar: player.avatar,
             friend_id: player.friend_id ?? null,
           })) ?? [],
@@ -299,15 +301,77 @@ const PublicViewPage = () => {
     },
   });
 
-  const activePlayers = useMemo(() => game?.players.filter((player) => player.is_alive) ?? [], [game?.players]);
+  const activePlayers = useMemo(
+    () => game?.players.filter((player) => (player.public_is_alive ?? player.is_alive)) ?? [],
+    [game?.players]
+  );
   const inactivePlayers = useMemo(
-    () => game?.players.filter((player) => !player.is_alive) ?? [],
+    () => game?.players.filter((player) => !(player.public_is_alive ?? player.is_alive)) ?? [],
     [game?.players]
   );
   const isDay = game?.current_phase === "day";
   const title = auth?.user?.username ? `${auth.user.username}'s game` : "Your game";
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const renderPlayerCard = (
+    player: GameDetail["players"][number],
+    isAlive: boolean
+  ) => {
+    const baseCardStyles = "relative w-32 h-40 overflow-hidden rounded-xl backdrop-blur-md transition-transform duration-300";
+    const aliveCardTone = "bg-emerald-600/15 border-emerald-400/35 hover:bg-emerald-600/25";
+    const deadCardTone = "bg-rose-600/20 border-rose-400/35 hover:bg-rose-600/30";
+    const cardTone = isAlive ? aliveCardTone : `${deadCardTone} opacity-75`;
+
+    const topTone = isAlive ? "bg-white/35" : "bg-rose-200/35";
+    const bottomTone = isAlive ? "bg-white/20" : "bg-rose-200/25";
+
+    const dividerColor = isAlive ? "bg-white/50" : "bg-rose-100/60";
+    const textColor = "text-white";
+
+    const normalizedAvatar = normalizeAvatar(player.avatar);
+    const displayValue = normalizedAvatar ?? player.name?.trim().charAt(0)?.toUpperCase() ?? "🙂";
+    const isImageAvatar = normalizedAvatar?.startsWith("http") || normalizedAvatar?.startsWith("data:");
+
+    return (
+      <div
+        key={player.id}
+        className={`${baseCardStyles} ${cardTone} border flex flex-col hover:scale-105`}
+      >
+        <div className={`absolute top-[75%] left-4 right-4 h-px ${dividerColor}`} />
+        <div className="relative grid h-full grid-rows-[3fr_1fr]">
+          <div className="relative flex items-center justify-center px-3 pt-4 pb-2">
+            <div
+              className={`pointer-events-none absolute inset-0 rounded-t-xl ${topTone}`}
+            />
+            {isImageAvatar ? (
+              <img
+                src={displayValue}
+                alt={player.name}
+                className={`relative z-10 h-16 w-16 rounded-lg object-cover shadow-lg transition-all duration-500 ${
+                  isAlive ? "" : "grayscale"
+                }`}
+              />
+            ) : (
+              <span
+                className="relative z-10 text-4xl leading-none drop-shadow transition-all duration-500 text-white"
+              >
+                {displayValue}
+              </span>
+            )}
+          </div>
+          <div className="relative flex items-center justify-center px-2 pb-3">
+            <div
+              className={`pointer-events-none absolute inset-0 rounded-b-xl ${bottomTone}`}
+            />
+            <span className={`relative z-10 text-center text-sm font-semibold leading-tight ${textColor}`}>
+              {player.name}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -438,13 +502,12 @@ const PublicViewPage = () => {
         </div>
 
         {/* Game info and Fullscreen - Bottom right corner */}
-        <div className="absolute bottom-6 right-6 flex items-center gap-4">
+        <div className="absolute top-6 right-6 flex items-center gap-4">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border transition-all duration-[8000ms] ease-in-out ${
             isDay 
               ? 'bg-yellow-400/20 text-yellow-100 border-yellow-300/30' 
               : 'bg-blue-600/20 text-blue-100 border-blue-400/30'
           }`}>
-            <span className="text-xl">{isDay ? '☀️' : '🌙'}</span>
             <span className="font-semibold">
               Game #{game.id} • {isDay ? "Day" : "Night"} {game.current_round}
             </span>
@@ -464,64 +527,19 @@ const PublicViewPage = () => {
           </button>
         </div>
 
-        {/* Players - Bottom left corner */}
-        <div className="absolute bottom-6 left-6 flex flex-wrap gap-3 max-w-2xl">
-          {/* Active Players */}
-          {activePlayers.length === 0 ? null : (
-            activePlayers.map((player) => (
-              <div
-                key={player.id}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl backdrop-blur-sm border hover:scale-105 w-28 h-28 transition-all duration-[8000ms] ease-in-out ${
-                  isDay
-                    ? 'bg-emerald-500/20 border-emerald-400/30 hover:bg-emerald-500/30'
-                    : 'bg-emerald-600/30 border-emerald-500/40 hover:bg-emerald-600/40'
-                }`}
-              >
-                <PlayerAvatar 
-                  value={player.avatar} 
-                  fallbackLabel={player.name} 
-                  size="md" 
-                  className={`border-2 transition-all duration-[8000ms] ease-in-out ${
-                    isDay ? 'border-emerald-300/50' : 'border-emerald-400/60'
-                  }`} 
-                />
-                <span className={`font-medium text-sm text-center leading-tight transition-all duration-[8000ms] ease-in-out ${
-                  isDay ? 'text-emerald-100' : 'text-emerald-200'
-                }`}>
-                  {player.name}
-                </span>
-              </div>
-            ))
-          )}
+        {/* Alive Players - Bottom left */}
+        {activePlayers.length > 0 && (
+          <div className="absolute bottom-6 left-6 flex max-w-2xl flex-wrap items-end gap-4">
+            {activePlayers.map((player) => renderPlayerCard(player, true))}
+          </div>
+        )}
 
-          {/* Eliminated Players */}
-          {inactivePlayers.length === 0 ? null : (
-            inactivePlayers.map((player) => (
-              <div
-                key={player.id}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl backdrop-blur-sm border hover:scale-105 opacity-75 w-28 h-28 transition-all duration-[8000ms] ease-in-out ${
-                  isDay
-                    ? 'bg-rose-500/20 border-rose-400/30 hover:bg-rose-500/30'
-                    : 'bg-rose-600/30 border-rose-500/40 hover:bg-rose-600/40'
-                }`}
-              >
-                <PlayerAvatar 
-                  value={player.avatar} 
-                  fallbackLabel={player.name} 
-                  size="md" 
-                  className={`border-2 grayscale transition-all duration-[8000ms] ease-in-out ${
-                    isDay ? 'border-rose-300/50' : 'border-rose-400/60'
-                  }`} 
-                />
-                <span className={`font-medium text-sm text-center leading-tight transition-all duration-[8000ms] ease-in-out ${
-                  isDay ? 'text-rose-100' : 'text-rose-200'
-                }`}>
-                  {player.name}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
+        {/* Eliminated Players - Bottom right */}
+        {inactivePlayers.length > 0 && (
+          <div className="absolute bottom-6 right-6 flex max-w-2xl flex-wrap items-end justify-end gap-4">
+            {inactivePlayers.map((player) => renderPlayerCard(player, false))}
+          </div>
+        )}
       </div>
     </div>
   );
