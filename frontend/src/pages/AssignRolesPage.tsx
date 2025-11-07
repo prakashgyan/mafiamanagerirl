@@ -283,7 +283,7 @@ const AssignRolesPage = () => {
           <div className="absolute bottom-10 right-[18%] h-80 w-80 rounded-full bg-emerald-400/12 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
         </div>
-  <BackdropLogo className="right-[-8%] top-[-4.5rem] w-[640px] opacity-20" />
+          <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
           <button

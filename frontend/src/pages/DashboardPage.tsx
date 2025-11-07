@@ -531,7 +531,7 @@ const DashboardPageContent = () => {
           <div className={`absolute bottom-14 right-[16%] h-80 w-80 rounded-full blur-3xl ${palette.glowSecondary}`} />
           <div className={`absolute inset-0 ${palette.radial}`} />
         </div>
-        <BackdropLogo className="right-[-10%] top-[-5rem] w-[700px] opacity-20" />
+        <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
           <button

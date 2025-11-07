@@ -412,7 +412,7 @@ const PublicViewPage = () => {
         <Moon key={`moon-${isDay}`} isDay={isDay} />
         <Clouds isDay={isDay} />
         <FloatingParticles isDay={isDay} />
-        <BackdropLogo className="right-[-12%] top-[-5rem] w-[680px] opacity-20" />
+        <BackdropLogo className="left-[20%] top-[2rem] w-[640px] opacity-5" />
 
         {/* Gradient overlay for better text readability */}
         <div className={`absolute inset-0 transition-all duration-[8000ms] ease-in-out ${
