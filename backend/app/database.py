@@ -68,6 +68,12 @@ class LogDb(Base):
     game = relationship("GameDb", back_populates="logs")
 
 
+class DemoUserStateDb(Base):
+    __tablename__ = "demo_user_state"
+    username = Column(String, primary_key=True)
+    seeded_at = Column(DateTime, nullable=False)
+
+
 class Datastore(Protocol):
     def get_user_by_username(self, username: str) -> User | None: ...
     def get_user_by_id(self, user_id: int) -> User | None: ...

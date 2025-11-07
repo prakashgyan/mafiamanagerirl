@@ -129,6 +129,7 @@ export const api = {
     apiFetch<User>("/auth/signup", { method: "POST", body: JSON.stringify({ username, password }) }),
   login: (username: string, password: string) =>
     apiFetch<User>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  demoLogin: () => apiFetch<User>("/auth/demo-login", { method: "POST" }),
   logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
   me: () => apiFetch<User>("/auth/me"),
 

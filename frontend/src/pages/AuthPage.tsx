@@ -4,16 +4,19 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const AuthPage = () => {
-  const { login, signup } = useAuth();
+  const { login, signup, loginAsDemo } = useAuth();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [demoSubmitting, setDemoSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setAuthSubmitting(true);
 
     try {
       if (mode === "login") {
@@ -24,8 +27,25 @@ const AuthPage = () => {
       navigate("/profile", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to authenticate");
+    } finally {
+      setAuthSubmitting(false);
     }
   };
+
+  const handleDemoLogin = async () => {
+    setError(null);
+    setDemoSubmitting(true);
+    try {
+      await loginAsDemo();
+      navigate("/profile", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start demo session");
+    } finally {
+      setDemoSubmitting(false);
+    }
+  };
+
+  const isBusy = authSubmitting || demoSubmitting;
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-12">
@@ -99,6 +119,7 @@ const AuthPage = () => {
                       : "text-slate-300 hover:text-white"
                   }`}
                   onClick={() => setMode("login")}
+                  disabled={isBusy}
                   type="button"
                 >
                   Login
@@ -110,6 +131,7 @@ const AuthPage = () => {
                       : "text-slate-300 hover:text-white"
                   }`}
                   onClick={() => setMode("signup")}
+                  disabled={isBusy}
                   type="button"
                 >
                   Sign Up
@@ -125,6 +147,7 @@ const AuthPage = () => {
                     className="mt-2 w-full rounded-xl border border-slate-700/80 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
                     placeholder="Choose a memorable name"
                     required
+                    disabled={isBusy}
                   />
                 </label>
                 <label className="block text-sm">
@@ -137,16 +160,42 @@ const AuthPage = () => {
                     placeholder="At least 6 characters"
                     required
                     minLength={6}
+                    disabled={isBusy}
                   />
                 </label>
                 {error && <p className="text-sm text-rose-400">{error}</p>}
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2 font-semibold text-slate-900 transition hover:bg-sky-400"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2 font-semibold text-slate-900 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isBusy}
                 >
-                  {mode === "login" ? "Login" : "Create Account"}
+                  {authSubmitting
+                    ? mode === "login"
+                      ? "Logging in..."
+                      : "Creating account..."
+                    : mode === "login"
+                      ? "Login"
+                      : "Create Account"}
                 </button>
               </form>
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <span className="h-px flex-1 bg-slate-800" aria-hidden />
+                  <span>Or</span>
+                  <span className="h-px flex-1 bg-slate-800" aria-hidden />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDemoLogin}
+                  disabled={isBusy}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-sky-400/30 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:border-sky-300 hover:text-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {demoSubmitting ? "Preparing demo..." : "Try a Demo Login"}
+                </button>
+                <p className="text-center text-xs text-slate-500">
+                  Explore MafiaDesk with a ready-made roster. The demo account resets every 24 hours.
+                </p>
+              </div>
             </div>
           </section>
         </div>

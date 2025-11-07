@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     auth_cookie_samesite: Literal["lax", "strict", "none"] | None = Field(
         default=None, description="SameSite cookie attribute"
     )
+    demo_user_enabled: bool = Field(default=False, description="Enable demo user login endpoint")
+    demo_username: str | None = Field(default=None, description="Demo user username")
+    demo_password: str | None = Field(default=None, description="Demo user password")
+    demo_user_ttl_hours: int = Field(default=24, description="Demo user reset interval in hours")
     database_url: str | None = Field(default=None, description="PostgreSQL connection URL")
     database_host: str | None = Field(default=None, description="PostgreSQL host")
     database_port: int | None = Field(default=None, description="PostgreSQL port")
@@ -99,6 +103,25 @@ class Settings(BaseSettings):
 
         # Persist the assembled DSN so downstream code can keep using database_url.
         self.database_url = url.render_as_string(hide_password=False)
+        return self
+
+    @model_validator(mode="after")
+    def validate_demo_user_config(self) -> "Settings":
+        if not self.demo_user_enabled:
+            return self
+
+        if not self.demo_username or not self.demo_username.strip():
+            raise ValueError("APP_DEMO_USERNAME must be provided when demo user is enabled")
+
+        if not self.demo_password or not self.demo_password.strip():
+            raise ValueError("APP_DEMO_PASSWORD must be provided when demo user is enabled")
+
+        if len(self.demo_password.encode("utf-8")) > 72:
+            raise ValueError("APP_DEMO_PASSWORD must be at most 72 bytes when UTF-8 encoded")
+
+        if self.demo_user_ttl_hours <= 0:
+            raise ValueError("APP_DEMO_USER_TTL_HOURS must be a positive integer")
+
         return self
 
 

@@ -6,6 +6,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  loginAsDemo: () => Promise<void>;
   signup: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -37,6 +38,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(loggedIn);
   }, []);
 
+  const loginAsDemo = useCallback(async () => {
+    const loggedIn = await api.demoLogin();
+    setUser(loggedIn);
+  }, []);
+
   const signup = useCallback(async (username: string, password: string) => {
     const registered = await api.signup(username, password);
     setUser(registered);
@@ -51,6 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     loading,
     login,
+    loginAsDemo,
     signup,
     logout,
     refreshUser,
