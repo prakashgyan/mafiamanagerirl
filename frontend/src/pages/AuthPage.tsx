@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import logoImage from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
 
 const AuthPage = () => {
@@ -56,8 +57,14 @@ const AuthPage = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-6xl rounded-3xl border border-white/10 bg-slate-900/70 shadow-2xl shadow-slate-950/70 backdrop-blur-xl">
-        <div className="grid gap-10 p-8 sm:p-12 lg:grid-cols-[1.1fr_1fr]">
-          <section className="flex flex-col justify-center gap-8 text-left">
+        <div className="relative grid gap-10 p-8 sm:p-12 lg:grid-cols-[1.1fr_1fr]">
+          <img
+            src={logoImage}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-10 right-[-5%] h-auto w-[420px] rotate-45 opacity-15"
+          />
+          <section className="relative z-10 flex flex-col justify-center gap-8 text-left">
             <div className="space-y-4">
               <Link
                 to="/"
@@ -105,7 +112,7 @@ const AuthPage = () => {
             </p>
           </section>
 
-          <section className="flex items-center justify-center">
+          <section className="relative z-10 flex items-center justify-center">
             <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950/80 p-7 shadow-lg shadow-black/40">
               <div className="mb-6 flex justify-between">
                 <h2 className="text-lg font-semibold text-white">Join the table</h2>
