@@ -9,6 +9,7 @@ import { api, GameActionPayload, GameDetail, GamePhase, Player } from "../servic
 import { getPlayerCardClasses, getRoleLabelClass } from "../utils/playerStyles";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
 import PlayerAvatar from "../components/PlayerAvatar";
+import BackdropLogo from "../components/BackdropLogo";
 
 const DND_TYPE = "PLAYER";
 
@@ -530,6 +531,7 @@ const DashboardPageContent = () => {
           <div className={`absolute bottom-14 right-[16%] h-80 w-80 rounded-full blur-3xl ${palette.glowSecondary}`} />
           <div className={`absolute inset-0 ${palette.radial}`} />
         </div>
+        <BackdropLogo className="right-[-10%] top-[-5rem] w-[700px] opacity-20" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
           <button

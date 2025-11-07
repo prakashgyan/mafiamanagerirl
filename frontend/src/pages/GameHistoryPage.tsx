@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { api, GameStatus, GameSummary } from "../services/api";
+import BackdropLogo from "../components/BackdropLogo";
 
 const statusLabels: Record<GameStatus, { label: string; accent: string }> = {
   pending: { label: "Pending", accent: "text-amber-200 border-amber-400/40 bg-amber-400/10" },
@@ -72,6 +73,7 @@ const GameHistoryPage = () => {
         <div className="absolute bottom-0 right-[10%] h-96 w-96 rounded-full bg-emerald-400/12 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_58%)]" />
       </div>
+      <BackdropLogo className="right-[-12%] top-[-5rem] w-[680px] opacity-20" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12 lg:py-16">
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">

@@ -5,6 +5,7 @@ import { useGameSocket } from "../hooks/useGameSocket";
 import { api, GameDetail, GamePhase, GameStatus } from "../services/api";
 import { useOptionalAuth } from "../context/AuthContext";
 import PlayerAvatar from "../components/PlayerAvatar";
+import BackdropLogo from "../components/BackdropLogo";
 
 // Typewriter Component
 const TypewriterText = ({ text, isDay }: { text: string; isDay: boolean }) => {
@@ -411,7 +412,8 @@ const PublicViewPage = () => {
         <Moon key={`moon-${isDay}`} isDay={isDay} />
         <Clouds isDay={isDay} />
         <FloatingParticles isDay={isDay} />
-        
+        <BackdropLogo className="right-[-12%] top-[-5rem] w-[680px] opacity-20" />
+
         {/* Gradient overlay for better text readability */}
         <div className={`absolute inset-0 transition-all duration-[8000ms] ease-in-out ${
           isDay 

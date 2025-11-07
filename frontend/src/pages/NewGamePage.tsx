@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import PlayerAvatar from "../components/PlayerAvatar";
 import { api, CreateGamePlayer, Friend } from "../services/api";
 import { getRandomAnimalAvatar, normalizeAvatar } from "../utils/avatarOptions";
+import BackdropLogo from "../components/BackdropLogo";
 
 const ROLE_KEYS = ["Mafia", "Detective", "Doctor", "Villager", "Jester"] as const;
 
@@ -221,6 +222,7 @@ const NewGamePage = () => {
         <div className="absolute bottom-10 right-[18%] h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_55%)]" />
       </div>
+      <BackdropLogo className="right-[-10%] top-[-5rem] w-[680px] opacity-20" />
 
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-12">
         <button

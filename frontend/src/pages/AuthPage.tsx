@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import logoImage from "../assets/logo.png";
+import BackdropLogo from "../components/BackdropLogo";
 import { useAuth } from "../context/AuthContext";
 
 const AuthPage = () => {
@@ -58,12 +58,7 @@ const AuthPage = () => {
 
       <div className="relative z-10 w-full max-w-6xl rounded-3xl border border-white/10 bg-slate-900/70 shadow-2xl shadow-slate-950/70 backdrop-blur-xl">
         <div className="relative grid gap-10 p-8 sm:p-12 lg:grid-cols-[1.1fr_1fr]">
-          <img
-            src={logoImage}
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-10 right-[-2%] h-auto w-[720px] rotate-0 opacity-20"
-          />
+          <BackdropLogo />
           <section className="relative z-10 flex flex-col justify-center gap-8 text-left">
             <div className="space-y-4">
               <Link

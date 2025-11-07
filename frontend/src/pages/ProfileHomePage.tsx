@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { api, Friend, GameSummary } from "../services/api";
+import BackdropLogo from "../components/BackdropLogo";
 
 const ProfileHomePage = () => {
   const { user, logout } = useAuth();
@@ -76,6 +77,7 @@ const ProfileHomePage = () => {
         <div className="absolute bottom-0 right-[15%] h-80 w-80 rounded-full bg-emerald-400/10 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_55%)]" />
       </div>
+      <BackdropLogo className="right-[-10%] top-[-5rem] w-[680px] opacity-20" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:py-16">
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">

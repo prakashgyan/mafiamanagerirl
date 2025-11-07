@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import LogsSection from "../components/LogTimeline";
 import { api, GameDetail } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
+import BackdropLogo from "../components/BackdropLogo";
 
 const GameOverPage = () => {
   const { gameId } = useParams();
@@ -82,6 +83,7 @@ const GameOverPage = () => {
         <div className="absolute bottom-[-6rem] right-[18%] h-96 w-96 rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_58%)]" />
       </div>
+      <BackdropLogo className="right-[-12%] top-[-5rem] w-[700px] opacity-20" />
 
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-12 lg:py-16">
         <button
