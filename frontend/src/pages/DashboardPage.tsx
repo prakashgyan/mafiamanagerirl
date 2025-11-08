@@ -143,6 +143,11 @@ const DashboardPageContent = () => {
     [game, plannedNightActions.investigate]
   );
 
+  const sortedPlayers = useMemo(() => {
+    if (!game) return [] as Player[];
+    return [...game.players].sort((first, second) => Number(second.is_alive) - Number(first.is_alive));
+  }, [game]);
+
   const voteEligibleIds = useMemo(() => new Set(alivePlayers.map((player) => player.id)), [alivePlayers]);
   const killEligibleIds = useMemo(() => new Set(aliveNonMafiaPlayers.map((player) => player.id)), [aliveNonMafiaPlayers]);
   const saveEligibleIds = useMemo(() => new Set(alivePlayers.map((player) => player.id)), [alivePlayers]);
@@ -749,7 +754,7 @@ const DashboardPageContent = () => {
               <h2 className="text-lg font-semibold text-white">Players</h2>
               <p className="mb-4 text-xs uppercase tracking-wide text-slate-400">Drag living players into the targets.</p>
               <div className="grid grid-cols-2 gap-3">
-                {game.players.map((player) => (
+                {sortedPlayers.map((player) => (
                   <DraggablePlayerCard key={player.id} player={player} />
                 ))}
               </div>
