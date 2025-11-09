@@ -179,8 +179,6 @@ const ProfileHomePage = () => {
                           </button>
                           <Link
                             to={`/games/${game.id}/public`}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="rounded-lg border border-slate-700/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-slate-400 hover:text-white"
                           >
                             Public View
