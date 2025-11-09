@@ -4,5 +4,4 @@
 /games/new            /index.html   200
 /games/*/assign       /index.html   200
 /games/*/manage       /index.html   200
-/games/*/public       /index.html   200
 /games/*/over         /index.html   200
