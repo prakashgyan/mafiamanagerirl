@@ -266,7 +266,7 @@ const PublicViewPage = () => {
     })();
   }, [gameId]);
 
-  useGameSocket(Number(gameId ?? 0), {
+  const { status: socketStatus } = useGameSocket(Number(gameId ?? 0), {
     enabled: Boolean(gameId),
     onMessage: (message) => {
       if (message.game_id !== Number(gameId)) return;
@@ -300,6 +300,21 @@ const PublicViewPage = () => {
       });
     },
   });
+
+  const socketIndicator = useMemo(() => {
+    switch (socketStatus) {
+      case "open":
+        return { color: "bg-emerald-400", label: "Live" };
+      case "connecting":
+        return { color: "bg-amber-400", label: "Connecting" };
+      case "reconnecting":
+        return { color: "bg-amber-400", label: "Reconnecting" };
+      case "error":
+        return { color: "bg-rose-500", label: "Error" };
+      default:
+        return { color: "bg-rose-500", label: "Offline" };
+    }
+  }, [socketStatus]);
 
   const activePlayers = useMemo(
     () => game?.players.filter((player) => (player.public_is_alive ?? player.is_alive)) ?? [],
@@ -435,19 +450,7 @@ const PublicViewPage = () => {
   }
 
   if (!game) {
-    return (
-      <div className="flex min-h-screen items-center justify-center relative overflow-hidden">
-        {/* Animated background for loading state */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-black">
-          <Stars isDay={false} />
-          <FloatingParticles isDay={false} />
-        </div>
-        <div className="relative z-10 text-center">
-          <div className="animate-spin text-6xl mb-4">⏳</div>
-          <div className="text-2xl font-bold text-blue-200">Loading public view...</div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -503,13 +506,20 @@ const PublicViewPage = () => {
 
         {/* Game info and Fullscreen - Bottom right corner */}
         <div className="absolute top-6 right-6 flex items-center gap-4">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border transition-all duration-[8000ms] ease-in-out ${
+          <div className={`inline-flex items-center gap-3 px-4 py-2 rounded-full backdrop-blur-sm border transition-all duration-[8000ms] ease-in-out ${
             isDay 
               ? 'bg-yellow-400/20 text-yellow-100 border-yellow-300/30' 
               : 'bg-blue-600/20 text-blue-100 border-blue-400/30'
           }`}>
             <span className="font-semibold">
               Game #{game.id} • {isDay ? "Day" : "Night"} {game.current_round}
+            </span>
+            <span
+              className="flex items-center gap-2 text-[0.7rem] font-medium uppercase tracking-wide"
+              title={`WebSocket status: ${socketIndicator.label}`}
+            >
+              <span className={`h-2.5 w-2.5 rounded-full shadow shadow-black/40 ${socketIndicator.color}`} />
+              <span>{socketIndicator.label}</span>
             </span>
           </div>
 
