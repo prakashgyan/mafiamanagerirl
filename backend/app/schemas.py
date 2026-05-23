@@ -47,9 +47,9 @@ class LoginRequest(BaseModel):
 
 
 class FriendBase(BaseModel):
-    name: str
-    description: Optional[str] = None
-    image: Optional[str] = None
+    name: str = Field(max_length=100)
+    description: Optional[str] = Field(default=None, max_length=500)
+    image: Optional[str] = Field(default=None, max_length=500)
 
 
 class FriendCreate(FriendBase):
@@ -63,8 +63,8 @@ class FriendRead(FriendBase):
 
 
 class PlayerBase(BaseModel):
-    name: str
-    role: Optional[str] = None
+    name: str = Field(max_length=100)
+    role: Optional[str] = Field(default=None, max_length=50)
     is_alive: bool = True
     public_is_alive: bool = True
     avatar: Optional[str] = None
@@ -72,8 +72,8 @@ class PlayerBase(BaseModel):
 
 
 class PlayerCreate(BaseModel):
-    name: str
-    avatar: Optional[str] = None
+    name: str = Field(max_length=100)
+    avatar: Optional[str] = Field(default=None, max_length=500)
     friend_id: Optional[int] = None
 
 
@@ -117,7 +117,7 @@ class GameCreateRequest(BaseModel):
 
 
 class GameRead(GameBase):
-    id: int
+    id: str
 
     model_config = {"from_attributes": True}
 
@@ -132,10 +132,10 @@ class AssignRolesRequest(BaseModel):
 
 
 class GameActionRequest(BaseModel):
-    action_type: str
+    action_type: str = Field(max_length=50)
     target_player_id: Optional[int] = None
-    actor_role: Optional[str] = None
-    note: Optional[str] = None
+    actor_role: Optional[str] = Field(default=None, max_length=50)
+    note: Optional[str] = Field(default=None, max_length=500)
 
 
 class PhaseChangeRequest(BaseModel):
@@ -143,7 +143,7 @@ class PhaseChangeRequest(BaseModel):
 
 
 class FinishGameRequest(BaseModel):
-    winning_team: str
+    winning_team: str = Field(max_length=100)
 
 
 class NightActionsRequest(BaseModel):
@@ -162,7 +162,3 @@ class NightActionsRequest(BaseModel):
                 raise ValueError(f"Night action {action.action_type} requires a target player")
         return self
 
-
-class GameHistoryEntry(GameRead):
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None

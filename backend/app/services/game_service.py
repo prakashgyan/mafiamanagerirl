@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import random
 from typing import Callable, Optional
 
-from anyio import from_thread
 from fastapi import HTTPException, status
 from loguru import logger
 
 from .. import schemas
-from ..database import Datastore
+from ..datastore import Datastore
 from ..game_logic import determine_winner, resolve_vote_elimination
 from ..models import Game, GameAggregate, GamePhase, GameStatus, Log, Player, User
 from ..socket_manager import manager
@@ -64,7 +64,7 @@ class GameManager:
         self.public_auto_sync_enabled = getattr(host, "public_auto_sync_enabled", True)
 
     @classmethod
-    def load(cls, game_id: int, datastore: Datastore, user: Optional[User] = None) -> "GameManager":
+    def load(cls, game_id: str, datastore: Datastore, user: Optional[User] = None) -> "GameManager":
         bundle = datastore.get_game_bundle(game_id)
         if not bundle:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
@@ -135,7 +135,11 @@ class GameManager:
     def broadcast(self, event: str, payload: Optional[dict] = None) -> None:
         message = self.serialize_for_broadcast(event, payload)
         logger.bind(game_id=self.id, event=event).debug("Broadcasting game state update")
-        from_thread.run(manager.broadcast, self.id, message)
+        try:
+            loop = asyncio.get_event_loop()
+            asyncio.run_coroutine_threadsafe(manager.broadcast(self.id, message), loop)
+        except Exception:
+            logger.exception("Failed to broadcast game state for game {}", self.id)
 
     def assign_roles(self, payload: schemas.AssignRolesRequest) -> None:
         for assignment in payload.assignments:
@@ -333,7 +337,7 @@ class GameService:
     def __init__(self, datastore: Datastore):
         self.datastore = datastore
 
-    def get_game_manager(self, game_id: int, current_user: Optional[User] = None) -> GameManager:
+    def get_game_manager(self, game_id: str, current_user: Optional[User] = None) -> GameManager:
         return GameManager.load(game_id, self.datastore, current_user)
 
     def create_game(self, payload: schemas.GameCreateRequest, current_user: User) -> GameManager:

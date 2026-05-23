@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_database_config(self) -> "Settings":
         """Ensure a full SQLAlchemy connection string is available."""
+        if self.environment == "test":
+            return self
         if self.database_url:
             return self
 

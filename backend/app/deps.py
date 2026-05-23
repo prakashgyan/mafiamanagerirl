@@ -5,7 +5,7 @@ from loguru import logger
 
 from .database import get_datastore, get_db
 from .models import User
-from .security import AUTH_COOKIE_NAME, decode_token
+from .security import AUTH_COOKIE_NAME, TokenExpiredError, TokenInvalidError, decode_token
 from sqlalchemy.orm import Session
 
 
@@ -15,8 +15,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    payload = decode_token(token)
-    if not payload or "sub" not in payload:
+    try:
+        payload = decode_token(token)
+    except TokenExpiredError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired, please log in again")
+    except TokenInvalidError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication")
 
     try:

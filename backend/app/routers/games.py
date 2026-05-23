@@ -7,6 +7,7 @@ from loguru import logger
 
 from .. import schemas
 from ..database import get_db
+
 from ..deps import get_current_user
 from ..models import GameStatus, User
 from ..services.game_service import GameService
@@ -44,7 +45,7 @@ def create_game(
 
 @router.get("/{game_id}", response_model=schemas.GameDetail)
 def get_game(
-    game_id: int,
+    game_id: str,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
 ) -> schemas.GameDetail:
@@ -55,7 +56,7 @@ def get_game(
 
 @router.post("/{game_id}/assign_roles", response_model=schemas.GameDetail)
 def assign_roles(
-    game_id: int,
+    game_id: str,
     payload: schemas.AssignRolesRequest,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
@@ -68,7 +69,7 @@ def assign_roles(
 
 @router.post("/{game_id}/start", response_model=schemas.GameDetail)
 def start_game(
-    game_id: int,
+    game_id: str,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
 ) -> schemas.GameDetail:
@@ -80,7 +81,7 @@ def start_game(
 
 @router.post("/{game_id}/action", response_model=schemas.GameDetail)
 def game_action(
-    game_id: int,
+    game_id: str,
     payload: schemas.GameActionRequest,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
@@ -94,7 +95,7 @@ def game_action(
 
 @router.post("/{game_id}/night_actions", response_model=schemas.GameDetail)
 def apply_night_actions(
-    game_id: int,
+    game_id: str,
     payload: schemas.NightActionsRequest,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
@@ -107,7 +108,7 @@ def apply_night_actions(
 
 @router.post("/{game_id}/phase", response_model=schemas.GameDetail)
 def change_phase(
-    game_id: int,
+    game_id: str,
     payload: schemas.PhaseChangeRequest,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
@@ -120,7 +121,7 @@ def change_phase(
 
 @router.post("/{game_id}/finish", response_model=schemas.GameDetail)
 def finish_game(
-    game_id: int,
+    game_id: str,
     payload: schemas.FinishGameRequest,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
@@ -133,7 +134,7 @@ def finish_game(
 
 @router.post("/{game_id}/sync_night", response_model=schemas.GameDetail)
 def sync_night_events(
-    game_id: int,
+    game_id: str,
     current_user: User = Depends(get_current_user),
     game_service: GameService = Depends(get_game_service),
 ) -> schemas.GameDetail:

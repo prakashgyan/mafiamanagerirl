@@ -1,21 +1,13 @@
 from __future__ import annotations
 
 import enum
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import List
 from pydantic import BaseModel, ConfigDict
 
 
 def utc_now() -> datetime:
-    return datetime.now(UTC)
-
-
-def create_game_log(game_id: int, round: int, phase: GamePhase, message: str) -> tuple[int, GamePhase, str]:
-    """Helper to create consistent log entries with automatic timestamp handling.
-    
-    Returns tuple of (round, phase, message) for use with datastore.add_log()
-    """
-    return round, phase, message
+    return datetime.now(timezone.utc)
 
 
 class GameStatus(str, enum.Enum):
@@ -49,7 +41,7 @@ class Friend(BaseModel):
 
 
 class Game(BaseModel):
-    id: int
+    id: str
     host_id: int
     status: GameStatus = GameStatus.PENDING
     current_phase: GamePhase = GamePhase.DAY
@@ -61,7 +53,7 @@ class Game(BaseModel):
 
 class Player(BaseModel):
     id: int
-    game_id: int
+    game_id: str
     name: str
     role: str | None = None
     is_alive: bool = True
@@ -74,7 +66,7 @@ class Player(BaseModel):
 
 class Log(BaseModel):
     id: int
-    game_id: int
+    game_id: str
     round: int
     phase: GamePhase
     message: str
@@ -89,7 +81,7 @@ class GameAggregate(BaseModel):
     logs: List[Log]
 
     @property
-    def id(self) -> int:
+    def id(self) -> str:
         return self.game.id
 
     @property

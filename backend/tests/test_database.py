@@ -1,34 +1,19 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, get_datastore, PostgresDataStore
-from app.config import get_settings
-from app.models import GameStatus, GamePhase
+from app.datastore import InMemoryDataStore
+from app.models import GamePhase, GameStatus
 
-settings = get_settings()
-engine = create_engine(settings.database_url)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base.metadata.create_all(bind=engine)
 
 @pytest.fixture()
-def db():
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
-
-    yield session
-
-    session.close()
-    transaction.rollback()
-    connection.close()
+def datastore() -> InMemoryDataStore:
+    store = InMemoryDataStore()
+    store.reset()
+    return store
 
 
-def test_create_user(db):
-    datastore = get_datastore(db)
+def test_create_user(datastore):
     user = datastore.create_user("testuser", "password")
     assert user.username == "testuser"
 
@@ -39,8 +24,7 @@ def test_create_user(db):
     assert retrieved_user_by_id.username == user.username
 
 
-def test_create_friend(db):
-    datastore = get_datastore(db)
+def test_create_friend(datastore):
     user = datastore.create_user("testuser", "password")
     friend = datastore.create_friend(user.id, name="testfriend", description="a friend for testing", image="test.png")
     assert friend.name == "testfriend"
@@ -59,11 +43,11 @@ def test_create_friend(db):
     assert len(friends) == 0
 
 
-def test_create_game(db):
-    datastore = get_datastore(db)
+def test_create_game(datastore):
     user = datastore.create_user("testuser", "password")
     game = datastore.create_game(user.id)
     assert game.host_id == user.id
+    assert len(game.id) == 6
 
     retrieved_game = datastore.get_game(game.id)
     assert retrieved_game.id == game.id
@@ -99,3 +83,15 @@ def test_create_game(db):
     assert bundle.game.id == game.id
     assert len(bundle.players) == 1
     assert len(bundle.logs) == 1
+
+
+def test_reset_user_data(datastore):
+    user = datastore.create_user("testuser", "password")
+    game = datastore.create_game(user.id)
+    datastore.add_player(game.id, name="Alice", avatar=None, friend_id=None)
+    datastore.create_friend(user.id, name="Bob", description=None, image=None)
+
+    datastore.reset_user_data(user.id)
+
+    assert datastore.list_games(user.id) == []
+    assert datastore.list_friends(user.id) == []

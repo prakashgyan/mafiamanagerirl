@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 import bcrypt
+import jwt as pyjwt
 from fastapi import Request, Response
-from jose import JWTError, jwt
 
 from .config import get_settings
 
@@ -35,17 +35,32 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
     to_encode = data.copy()
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
-    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    return pyjwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def decode_token(token: str) -> Dict[str, Any] | None:
+class TokenExpiredError(Exception):
+    """Raised when a JWT token has expired."""
+
+
+class TokenInvalidError(Exception):
+    """Raised when a JWT token is malformed or has an invalid signature."""
+
+
+def decode_token(token: str) -> Dict[str, Any]:
+    """Decode and validate a JWT token.
+
+    Raises:
+        TokenExpiredError: if the token's expiry has passed.
+        TokenInvalidError: if the token is malformed or signature is invalid.
+    """
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-    except JWTError:
-        return None
-    return payload
+        return pyjwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    except pyjwt.ExpiredSignatureError as exc:
+        raise TokenExpiredError("Token has expired") from exc
+    except pyjwt.PyJWTError as exc:
+        raise TokenInvalidError("Token is invalid") from exc
 
 
 def _cookie_settings(request: Request | None = None) -> dict[str, Any]:

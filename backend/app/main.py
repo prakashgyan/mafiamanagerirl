@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 from starlette.websockets import WebSocketDisconnect
 
 from loguru import logger
 
 from .config import get_settings
-from .database import Datastore, get_datastore, init_db, get_db
+from .database import get_datastore, init_db, get_db
 from .logging_utils import configure_logging
 from .router_registry import include_routers
-from sqlalchemy.orm import Session
 from .services.game_service import GameService
 from .socket_manager import manager
 
@@ -19,7 +22,11 @@ settings = get_settings()
 
 logger.bind(environment=settings.environment).info("Booting MafiaDesk backend")
 
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 app = FastAPI(title="MafiaDesk", version="1.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,20 +47,14 @@ def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
 
-def get_game_service(db: Session = Depends(get_db)) -> GameService:
-    datastore = get_datastore(db)
-    return GameService(datastore)
-
-
-from .database import SessionLocal
-
 @app.websocket("/ws/game/{game_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
-    game_id: int,
+    game_id: str,
 ) -> None:
     await manager.connect(game_id, websocket)
-    db = SessionLocal()
+    db_gen = get_db()
+    db = next(db_gen)
     try:
         datastore = get_datastore(db)
         game_service = GameService(datastore)
@@ -69,4 +70,7 @@ async def websocket_endpoint(
         manager.disconnect(game_id, websocket)
         await websocket.close(code=1011)
     finally:
-        db.close()
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
