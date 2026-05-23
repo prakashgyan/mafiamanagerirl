@@ -118,7 +118,18 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   }
 
   if (!response.ok) {
-    const message = await response.text();
+    const raw = await response.text();
+    let message = raw;
+    try {
+      const parsed = JSON.parse(raw) as { detail?: string | unknown };
+      if (typeof parsed.detail === "string") {
+        message = parsed.detail;
+      } else if (parsed.detail !== undefined) {
+        message = JSON.stringify(parsed.detail);
+      }
+    } catch {
+      // raw text is not JSON — use as-is
+    }
     throw new Error(message || `Request failed with ${response.status}`);
   }
 

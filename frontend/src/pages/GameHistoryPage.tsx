@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { api, GameStatus, GameSummary } from "../services/api";
 import BackdropLogo from "../components/BackdropLogo";
+import Spinner from "../components/Spinner";
 
 const statusLabels: Record<GameStatus, { label: string; accent: string }> = {
   pending: { label: "Pending", accent: "text-amber-200 border-amber-400/40 bg-amber-400/10" },
@@ -20,40 +21,60 @@ const filterOptions: { id: StatusFilter; label: string }[] = [
 ];
 
 const GameHistoryPage = () => {
-  const [games, setGames] = useState<GameSummary[]>([]);
+  const [allGames, setAllGames] = useState<GameSummary[]>([]);
+  const [filteredGames, setFilteredGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const navigate = useNavigate();
 
+  // Fetch all games once for accurate totals in filter badges
   useEffect(() => {
     const load = async () => {
       try {
-        const allGames = await api.listGames();
-        setGames(allGames);
+        const games = await api.listGames();
+        setAllGames(games);
+        setFilteredGames(games);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load game history");
       } finally {
         setLoading(false);
       }
     };
-
     void load();
   }, []);
 
-  const filteredGames = useMemo(() => {
-    if (statusFilter === "all") return games;
-    return games.filter((game) => game.status === statusFilter);
-  }, [games, statusFilter]);
+  // Re-fetch from backend when filter changes to reduce payload
+  useEffect(() => {
+    const applyFilter = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const games =
+          statusFilter === "all"
+            ? await api.listGames()
+            : await api.listGames(statusFilter);
+        setFilteredGames(games);
+        if (statusFilter === "all") {
+          setAllGames(games);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load game history");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void applyFilter();
+  }, [statusFilter]);
 
   const totals = useMemo(
     () => ({
-      all: games.length,
-      pending: games.filter((game) => game.status === "pending").length,
-      active: games.filter((game) => game.status === "active").length,
-      finished: games.filter((game) => game.status === "finished").length,
+      all: allGames.length,
+      pending: allGames.filter((game) => game.status === "pending").length,
+      active: allGames.filter((game) => game.status === "active").length,
+      finished: allGames.filter((game) => game.status === "finished").length,
     }),
-    [games]
+    [allGames]
   );
 
   const handleNavigateToGame = (game: GameSummary) => {
@@ -143,11 +164,7 @@ const GameHistoryPage = () => {
         </section>
 
         <section className="space-y-6">
-          {loading && (
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 text-center text-sm text-slate-300">
-              Loading game history...
-            </div>
-          )}
+          {loading && <Spinner message="Loading game history..." fullScreen={false} />}
 
           {error && (
             <div className="rounded-3xl border border-rose-500/40 bg-rose-500/10 p-5 text-sm text-rose-200">

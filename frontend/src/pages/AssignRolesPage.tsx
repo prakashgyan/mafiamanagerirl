@@ -6,24 +6,14 @@ import { api, GameDetail, Player } from "../services/api";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
 import PlayerAvatar from "../components/PlayerAvatar";
 import BackdropLogo from "../components/BackdropLogo";
-
-const ROLE_KEYS = ["Mafia", "Detective", "Doctor", "Villager", "Jester"] as const;
-
-type RoleName = (typeof ROLE_KEYS)[number];
+import Spinner from "../components/Spinner";
+import { ROLE_KEYS, RoleName, RoleCounts, DEFAULT_ROLE_COUNTS, PLAYER_DND_TYPE } from "../constants/roles";
 
 const isRoleName = (value: unknown): value is RoleName => ROLE_KEYS.includes(value as RoleName);
 
-type RoleCounts = Record<RoleName, number>;
+const DEFAULT_COUNTS: RoleCounts = DEFAULT_ROLE_COUNTS;
 
-const DEFAULT_COUNTS: RoleCounts = {
-  Mafia: 1,
-  Detective: 1,
-  Doctor: 1,
-  Villager: 2,
-  Jester: 0,
-};
-
-const DND_TYPE = "PLAYER";
+const DND_TYPE = PLAYER_DND_TYPE;
 
 type DragPayload = {
   player: Player;
@@ -109,9 +99,10 @@ const AssignedPlayerCard: FC<AssignedPlayerProps> = ({ player, onRemove }: Assig
     </div>
     <button
       onClick={onRemove}
+      aria-label={`Remove ${player.name} from role`}
       className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-rose-200 transition hover:bg-rose-500/20"
     >
-      X
+      <span aria-hidden>✕</span>
     </button>
   </div>
 );
@@ -258,11 +249,7 @@ const AssignRolesPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-        Loading game...
-      </div>
-    );
+    return <Spinner message="Loading game..." />;
   }
 
   if (error) {

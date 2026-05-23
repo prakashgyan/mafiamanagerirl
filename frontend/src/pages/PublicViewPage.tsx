@@ -1,290 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
-import { api, GameDetail, GamePhase, GameStatus } from "../services/api";
+import { api, GameDetail } from "../services/api";
 import { useOptionalAuth } from "../context/AuthContext";
 import BackdropLogo from "../components/BackdropLogo";
 import { normalizeAvatar } from "../utils/avatarOptions";
-
-// Utility function for conditional classes
-const cn = (...classes: (string | boolean | undefined)[]) => 
-  classes.filter(Boolean).join(' ');
-
-// Animation constants
-const ANIMATION_CONSTANTS = {
-  PHASE_TRANSITION_DURATION: 8000, // ms - Standard transition time for all phase changes
-  PHASE_TRANSITION_CSS: 'transition-all duration-[8000ms] ease-in-out', // Consistent CSS class
-  TYPEWRITER_DELETE_SPEED: 80, // ms
-  TYPEWRITER_TYPE_SPEED: 120, // ms
-  TYPEWRITER_PAUSE: 300, // ms
-  STAR_COUNT: 100,
-  CLOUD_COUNT: 6,
-  PARTICLE_COUNT: 20,
-  SUN_MOON_ARC_DISTANCE: 300, // px
-  MOON_ARC_DISTANCE: 250, // px
-} as const;
-
-// Typewriter Component
-const TypewriterText = ({ text, isDay }: { text: string; isDay: boolean }) => {
-  const [displayText, setDisplayText] = useState(text);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const prevTextRef = useRef(text);
-  const timeoutRef = useRef<number>();
-  const intervalRef = useRef<number>();
-  
-  useEffect(() => {
-    // Only trigger animation if text actually changed
-    if (prevTextRef.current === text) return;
-    
-    const previousText = prevTextRef.current;
-    prevTextRef.current = text;
-    
-    // Clear any existing timers
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    if (intervalRef.current) window.clearInterval(intervalRef.current);
-    
-    setIsAnimating(true);
-    
-    // Delete animation: remove characters one by one
-    let deleteIndex = previousText.length;
-    intervalRef.current = window.setInterval(() => {
-      if (deleteIndex > 0) {
-        setDisplayText(previousText.slice(0, deleteIndex - 1));
-        deleteIndex--;
-      } else {
-        if (intervalRef.current) window.clearInterval(intervalRef.current);
-        intervalRef.current = undefined;
-        
-        // Small pause before typing new text
-        timeoutRef.current = window.setTimeout(() => {
-          timeoutRef.current = undefined;
-          // Type animation: add characters one by one
-          let typeIndex = 0;
-          intervalRef.current = window.setInterval(() => {
-            if (typeIndex <= text.length) {
-              setDisplayText(text.slice(0, typeIndex));
-              typeIndex++;
-            } else {
-              if (intervalRef.current) window.clearInterval(intervalRef.current);
-              intervalRef.current = undefined;
-              setIsAnimating(false);
-            }
-          }, ANIMATION_CONSTANTS.TYPEWRITER_TYPE_SPEED);
-        }, ANIMATION_CONSTANTS.TYPEWRITER_PAUSE);
-      }
-    }, ANIMATION_CONSTANTS.TYPEWRITER_DELETE_SPEED);
-    
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    };
-  }, [text]);
-  
-  return (
-    <div className={cn(
-      "text-5xl font-bold drop-shadow-2xl tracking-wide",
-      ANIMATION_CONSTANTS.PHASE_TRANSITION_CSS,
-      isDay ? 'text-yellow-100' : 'text-blue-100'
-    )}>
-      <span className="inline-block">
-        {displayText}
-        <span className={cn(
-          "inline-block w-1 h-12 ml-2 bg-current transition-opacity duration-300",
-          isAnimating ? 'opacity-100 animate-blink-cursor' : 'opacity-0'
-        )} />
-      </span>
-    </div>
-  );
-};
-
-// Animated Background Components
-const Stars = ({ isDay }: { isDay: boolean }) => {
-  const stars = useMemo(() => Array.from({ length: ANIMATION_CONSTANTS.STAR_COUNT }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 2 + 1,
-    opacity: Math.random() * 0.8 + 0.2,
-    twinkleDelay: Math.random() * 8,
-    twinkleDuration: Math.random() * 4 + 3, // 3-7 seconds for slower twinkling
-  })), []);
-
-  return (
-    <div className={cn(
-      "absolute inset-0 overflow-hidden",
-      ANIMATION_CONSTANTS.PHASE_TRANSITION_CSS,
-      isDay ? 'opacity-0' : 'opacity-100'
-    )}>
-      {stars.map((star) => (
-        <div
-          key={star.id}
-          className="absolute animate-twinkle"
-          style={{
-            left: `${star.x}%`,
-            top: `${star.y}%`,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            opacity: star.opacity,
-            animationDelay: `${star.twinkleDelay}s`,
-            animationDuration: `${star.twinkleDuration}s`,
-          }}
-        >
-          <div className="h-full w-full rounded-full bg-white shadow-sm shadow-white/50" />
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const Sun = ({ isDay }: { isDay: boolean }) => {
-  return (
-    <div className="absolute top-16 right-16 w-0 h-0 pointer-events-none"> {/* Center point moved to top-right corner */}
-      <div 
-        className={`absolute -translate-x-1/2 -translate-y-1/2 ${
-          isDay 
-            ? 'animate-sun-rise' 
-            : 'animate-sun-set'
-        }`}
-        style={{ 
-          animationFillMode: 'forwards',
-          transformOrigin: 'center center',
-          // Initial position for sun-set (visible) or sun-rise (hidden)
-          transform: isDay 
-            ? `rotate(-120deg) translateX(${ANIMATION_CONSTANTS.SUN_MOON_ARC_DISTANCE}px) rotate(120deg) scale(0.8)` 
-            : `rotate(120deg) translateX(${ANIMATION_CONSTANTS.SUN_MOON_ARC_DISTANCE}px) rotate(-120deg) scale(1)`,
-          opacity: isDay ? 0 : 1
-        }}
-      >
-        <div className="relative">
-          {/* Sun body */}
-          <div className={`h-24 w-24 rounded-full bg-gradient-radial from-yellow-200 via-yellow-400 to-orange-500 shadow-lg shadow-yellow-400/50 ${
-            isDay ? 'animate-pulse' : ''
-          }`} style={{ animationDuration: "4s" }}>
-            <div className="h-full w-full rounded-full bg-gradient-to-br from-yellow-100/30 to-transparent" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Moon = ({ isDay }: { isDay: boolean }) => {
-  return (
-    <div className="absolute top-16 right-16 w-0 h-0 pointer-events-none"> {/* Center point moved to top-right corner */}
-      <div 
-        className={`absolute -translate-x-1/2 -translate-y-1/2 ${
-          isDay 
-            ? 'animate-moon-set' 
-            : 'animate-moon-rise'
-        }`}
-        style={{ 
-          animationFillMode: 'forwards',
-          transformOrigin: 'center center',
-          // Initial position for moon-rise (hidden) or moon-set (visible)
-          transform: isDay 
-            ? `rotate(120deg) translateX(${ANIMATION_CONSTANTS.MOON_ARC_DISTANCE}px) rotate(-120deg) scale(1)` 
-            : `rotate(-120deg) translateX(${ANIMATION_CONSTANTS.MOON_ARC_DISTANCE}px) rotate(120deg) scale(0.8)`,
-          opacity: isDay ? 1 : 0
-        }}
-      >
-        <div className="relative h-20 w-20">
-          {/* Moon glow */}
-          <div className="absolute -inset-4 rounded-full bg-blue-200/10 blur-xl animate-pulse" />
-          {/* Moon body */}
-          <div className="relative h-full w-full rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 shadow-lg shadow-blue-200/30">
-            {/* Moon craters */}
-            <div className="absolute left-3 top-2 h-2 w-2 rounded-full bg-slate-400/50" />
-            <div className="absolute right-4 top-4 h-1 w-1 rounded-full bg-slate-400/50" />
-            <div className="absolute bottom-3 left-5 h-1.5 w-1.5 rounded-full bg-slate-400/50" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Clouds = ({ isDay }: { isDay: boolean }) => {
-  const clouds = useMemo(() => Array.from({ length: ANIMATION_CONSTANTS.CLOUD_COUNT }, (_, i) => ({
-    id: i,
-    x: Math.random() * 220 - 20, // Start randomly across the entire screen (-20% to 200%)
-    y: Math.random() * 30 + 10,
-    scale: Math.random() * 0.5 + 0.5,
-    speed: Math.random() * 80 + 80, // Much slower movement (80-160s)
-    delay: Math.random() * 5, // Quick start delay (0-5s) so clouds appear immediately
-  })), []);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {clouds.map((cloud) => (
-        <div
-          key={cloud.id}
-          className="absolute animate-drift"
-          style={{
-            left: `${cloud.x}%`,
-            top: `${cloud.y}%`,
-            transform: `scale(${cloud.scale})`,
-            animationDuration: `${cloud.speed}s`,
-            animationDelay: `${cloud.delay}s`,
-          }}
-        >
-          <svg 
-            width="80" 
-            height="40" 
-            viewBox="0 0 80 40" 
-            className={cn(
-              ANIMATION_CONSTANTS.PHASE_TRANSITION_CSS,
-              isDay ? 'text-white/70' : 'text-slate-700/50'
-            )}
-            style={{
-              fill: 'currentColor'
-            }}
-          >
-            <path d="M20 30c-6 0-10-4-10-10s4-10 10-10c2-6 8-10 15-10s13 4 15 10c6 0 10 4 10 10s-4 10-10 10H20z" />
-          </svg>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const FloatingParticles = ({ isDay }: { isDay: boolean }) => {
-  const particles = useMemo(() => Array.from({ length: ANIMATION_CONSTANTS.PARTICLE_COUNT }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 4 + 2,
-    duration: Math.random() * 10 + 10,
-    delay: Math.random() * 5,
-  })), []);
-
-  return (
-    <div className={cn(
-      "absolute inset-0 overflow-hidden",
-      ANIMATION_CONSTANTS.PHASE_TRANSITION_CSS,
-      isDay ? 'opacity-60' : 'opacity-30'
-    )}>
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className={cn(
-            "absolute animate-bounce rounded-full blur-sm",
-            ANIMATION_CONSTANTS.PHASE_TRANSITION_CSS,
-            isDay ? 'bg-yellow-200' : 'bg-blue-200'
-          )}
-          style={{
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-            width: `${particle.size}px`,
-            height: `${particle.size}px`,
-            animationDuration: `${particle.duration}s`,
-            animationDelay: `${particle.delay}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
+import { cn } from "../utils/cn";
+import TypewriterText from "../components/TypewriterText";
+import { Stars, Sun, Moon, Clouds, FloatingParticles } from "../components/publicview/AnimatedBackground";
+import ANIMATION_CONSTANTS from "../constants/animationConstants";
 
 const PublicViewPage = () => {
   const { gameId } = useParams();
@@ -309,33 +34,17 @@ const PublicViewPage = () => {
     enabled: Boolean(gameId),
     onMessage: (message) => {
       if (message.game_id !== gameId) return;
+      if (!message.players || !message.logs) return;
 
       setError(null);
       setGame({
         id: message.game_id,
-        status: message.status as GameStatus,
-        current_phase: message.phase as GamePhase,
+        status: message.status,
+        current_phase: message.phase,
         current_round: message.round,
         winning_team: message.winning_team ?? null,
-        players:
-          message.players?.map((player) => ({
-            id: player.id,
-            name: player.name,
-            role: player.role,
-            is_alive: player.is_alive,
-            public_is_alive: player.public_is_alive,
-            actual_is_alive: player.actual_is_alive,
-            avatar: player.avatar,
-            friend_id: player.friend_id ?? null,
-          })) ?? [],
-        logs:
-          message.logs?.map((log) => ({
-            id: log.id,
-            round: log.round,
-            phase: log.phase as GamePhase,
-            message: log.message,
-            timestamp: log.timestamp,
-          })) ?? [],
+        players: message.players,
+        logs: message.logs,
       });
     },
   });

@@ -5,18 +5,9 @@ import PlayerAvatar from "../components/PlayerAvatar";
 import { api, CreateGamePlayer, Friend } from "../services/api";
 import { getRandomAnimalAvatar, normalizeAvatar } from "../utils/avatarOptions";
 import BackdropLogo from "../components/BackdropLogo";
+import { ROLE_KEYS, RoleCounts, DEFAULT_ROLE_COUNTS } from "../constants/roles";
 
-const ROLE_KEYS = ["Mafia", "Detective", "Doctor", "Villager", "Jester"] as const;
-
-type RoleCounts = Record<(typeof ROLE_KEYS)[number], number>;
-
-const defaultRoleCounts: RoleCounts = {
-  Mafia: 1,
-  Detective: 1,
-  Doctor: 1,
-  Villager: 2,
-  Jester: 0,
-};
+const defaultRoleCounts: RoleCounts = DEFAULT_ROLE_COUNTS;
 
 const getSuggestedRoleCounts = (playerCount: number): RoleCounts => {
   if (playerCount <= 0) {

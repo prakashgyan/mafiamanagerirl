@@ -1,24 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { GamePhase, GameStatus, LogEntry, Player } from "../services/api";
 
 export type GameSocketMessage = {
   event: string;
   game_id: string;
-  status: string;
-  phase: string;
+  status: GameStatus;
+  phase: GamePhase;
   round: number;
   public_auto_sync_enabled?: boolean;
   winning_team?: string | null;
-  players?: Array<{
-    id: number;
-    name: string;
-    role?: string | null;
-    is_alive: boolean;
-    public_is_alive?: boolean;
-    actual_is_alive?: boolean;
-    avatar?: string | null;
-    friend_id?: number | null;
-  }>;
-  logs?: Array<{ id: number; round: number; phase: string; message: string; timestamp: string }>;
+  players?: Player[];
+  logs?: LogEntry[];
 };
 
 const isGameSocketMessage = (value: unknown): value is GameSocketMessage => {

@@ -6,6 +6,7 @@ import LogsSection from "../components/LogTimeline";
 import { api, GameDetail } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
 import BackdropLogo from "../components/BackdropLogo";
+import Spinner from "../components/Spinner";
 
 const GameOverPage = () => {
   const { gameId } = useParams();
@@ -41,11 +42,7 @@ const GameOverPage = () => {
   }
 
   if (!game) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-        Loading...
-      </div>
-    );
+    return <Spinner message="Loading..." />;
   }
 
   const alivePlayers = game.players.filter((player) => player.is_alive);

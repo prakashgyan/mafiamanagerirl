@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api, Friend, GameSummary } from "../services/api";
 import BackdropLogo from "../components/BackdropLogo";
+import PlayerAvatar from "../components/PlayerAvatar";
+import { FRIEND_AVATAR_OPTIONS, getRandomFriendAvatar } from "../utils/avatarOptions";
 
 const ProfileHomePage = () => {
   const { user, logout } = useAuth();
@@ -13,6 +15,7 @@ const ProfileHomePage = () => {
   const [friendFormOpen, setFriendFormOpen] = useState(false);
   const [friendName, setFriendName] = useState("");
   const [friendDescription, setFriendDescription] = useState("");
+  const [friendAvatar, setFriendAvatar] = useState<string>(getRandomFriendAvatar());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,10 +65,11 @@ const ProfileHomePage = () => {
 
     try {
       setError(null);
-      const newFriend = await api.createFriend({ name: trimmedName, description: friendDescription.trim() || undefined });
+      const newFriend = await api.createFriend({ name: trimmedName, description: friendDescription.trim() || undefined, image: friendAvatar });
       setFriends((prev) => [newFriend, ...prev]);
       setFriendName("");
       setFriendDescription("");
+      setFriendAvatar(getRandomFriendAvatar());
       setFriendFormOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save friend");
@@ -283,6 +287,39 @@ const ProfileHomePage = () => {
                       placeholder="Role preferences, energy level, favourite twists..."
                     />
                   </label>
+                  <div className="space-y-3 text-sm">
+                    <span className="block text-slate-300">Avatar</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <PlayerAvatar value={friendAvatar} fallbackLabel={friendName} size="md" />
+                      <button
+                        type="button"
+                        onClick={() => setFriendAvatar(getRandomFriendAvatar())}
+                        className="rounded-full border border-slate-700/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-sky-400 hover:text-sky-200"
+                      >
+                        Randomize
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
+                      {FRIEND_AVATAR_OPTIONS.map((option) => {
+                        const isSelected = option === friendAvatar;
+                        return (
+                          <button
+                            type="button"
+                            key={option}
+                            onClick={() => setFriendAvatar(option)}
+                            className={`rounded-xl border px-2 py-2 text-lg transition ${
+                              isSelected
+                                ? "border-sky-400/70 bg-sky-500/15 text-sky-100"
+                                : "border-slate-800 bg-slate-900/80 text-slate-200 hover:border-sky-400/60"
+                            }`}
+                          >
+                            <span aria-hidden>{option}</span>
+                            <span className="sr-only">Select avatar {option}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <button
                     onClick={handleAddFriend}
                     className="w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400"

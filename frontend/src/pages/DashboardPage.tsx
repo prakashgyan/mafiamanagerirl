@@ -1,59 +1,17 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { useDrag, useDrop } from "react-dnd";
-import type { ConnectDropTarget } from "react-dnd";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
 import LogsSection from "../components/LogTimeline";
 import { api, GameActionPayload, GameDetail, GamePhase, Player } from "../services/api";
-import { getPlayerCardClasses, getRoleLabelClass } from "../utils/playerStyles";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
-import PlayerAvatar from "../components/PlayerAvatar";
 import BackdropLogo from "../components/BackdropLogo";
+import Spinner from "../components/Spinner";
+import DayPhasePanel from "../components/dashboard/DayPhasePanel";
+import NightPhasePanel from "../components/dashboard/NightPhasePanel";
+import PlayerRoster from "../components/dashboard/PlayerRoster";
+import GameControls from "../components/dashboard/GameControls";
 import { useAuth } from "../context/AuthContext";
-
-const DND_TYPE = "PLAYER";
-
-type DragItem = {
-  playerId: number;
-};
-
-type DraggablePlayerCardProps = {
-  player: Player;
-};
-
-const DraggablePlayerCard = ({ player }: DraggablePlayerCardProps) => {
-  const [{ isDragging }, dragRef] = useDrag<DragItem, void, { isDragging: boolean }>(
-    () => ({
-      type: DND_TYPE,
-      item: { playerId: player.id },
-      canDrag: player.is_alive,
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
-    }),
-    [player]
-  );
-
-  return (
-    <div
-      ref={dragRef}
-      className={`flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm shadow-sm shadow-black/30 transition ${
-        player.is_alive ? "cursor-grab hover:border-sky-400/60" : "cursor-not-allowed opacity-70"
-      } ${isDragging ? "opacity-60" : ""} ${getPlayerCardClasses(player)}`}
-      aria-disabled={!player.is_alive}
-    >
-      <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" className="mt-1" />
-      <div className="flex flex-col gap-1">
-        <p className="font-semibold text-white">{player.name}</p>
-        <p className={`text-xs uppercase tracking-wide ${getRoleLabelClass(player)}`}>
-          {player.role ?? "Unassigned"}
-        </p>
-        {!player.is_alive && <p className="text-[0.65rem] text-slate-400">Eliminated</p>}
-      </div>
-    </div>
-  );
-};
 
 type NightActionType = "kill" | "save" | "investigate";
 
@@ -97,7 +55,44 @@ const DashboardPageContent = () => {
     enabled: true,
     onMessage: (message) => {
       if (!gameId || message.game_id !== gameId) return;
-      void loadGame();
+
+      // Apply WS payload directly when it carries full game state
+      if (message.players && message.logs) {
+        setGame((prev) => {
+          const updated: GameDetail = {
+            id: message.game_id,
+            status: message.status,
+            current_phase: message.phase,
+            current_round: message.round,
+            winning_team: message.winning_team,
+            players: message.players!,
+            logs: message.logs!,
+          };
+
+          // F02: clear stale vote/night targets if the previously selected player
+          // is no longer alive in the updated game state
+          const aliveIds = new Set(updated.players.filter((p) => p.is_alive).map((p) => p.id));
+          setVoteTarget((prev) => (prev !== undefined && !aliveIds.has(prev) ? undefined : prev));
+          setPlannedNightActions((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            for (const key of ["kill", "save", "investigate"] as const) {
+              if (next[key] !== undefined && !aliveIds.has(next[key]!)) {
+                delete next[key];
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
+          });
+
+          return updated;
+        });
+        setError(null);
+        setLoading(false);
+      } else {
+        // Fallback: full HTTP refresh for events without embedded state
+        void loadGame();
+      }
     },
   });
 
@@ -130,79 +125,16 @@ const DashboardPageContent = () => {
     return alivePlayers;
   }, [alivePlayers, aliveDetectives]);
 
-  const killTargetPlayer = useMemo(
-    () => game?.players.find((player) => player.id === plannedNightActions.kill),
-    [game, plannedNightActions.kill]
-  );
-  const saveTargetPlayer = useMemo(
-    () => game?.players.find((player) => player.id === plannedNightActions.save),
-    [game, plannedNightActions.save]
-  );
-  const investigateTargetPlayer = useMemo(
-    () => game?.players.find((player) => player.id === plannedNightActions.investigate),
-    [game, plannedNightActions.investigate]
-  );
-
   const sortedPlayers = useMemo(() => {
     if (!game) return [] as Player[];
     return [...game.players].sort((first, second) => Number(second.is_alive) - Number(first.is_alive));
   }, [game]);
-
-  const voteEligibleIds = useMemo(() => new Set(alivePlayers.map((player) => player.id)), [alivePlayers]);
-  const killEligibleIds = useMemo(() => new Set(aliveNonMafiaPlayers.map((player) => player.id)), [aliveNonMafiaPlayers]);
-  const saveEligibleIds = useMemo(() => new Set(alivePlayers.map((player) => player.id)), [alivePlayers]);
-  const investigateEligibleIds = useMemo(
-    () => new Set(investigateTargets.map((player) => player.id)),
-    [investigateTargets]
-  );
 
   const hasAliveDoctors = aliveDoctors.length > 0;
   const hasAliveDetectives = aliveDetectives.length > 0;
 
   const plannedSaveId = plannedNightActions.save;
   const plannedInvestigateId = plannedNightActions.investigate;
-
-  const isDayPhase = game?.current_phase === "day";
-
-  const [{ isOver: isVoteOver, canDrop: canVoteDrop }, voteDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
-    accept: DND_TYPE,
-    canDrop: (item) => voteEligibleIds.has(item.playerId),
-    drop: (item) => setVoteTarget(item.playerId),
-    collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }),
-      canDrop: monitor.canDrop(),
-    }),
-  }), [voteEligibleIds]);
-
-  const [{ isOver: isKillOver, canDrop: canKillDrop }, killDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
-    accept: DND_TYPE,
-    canDrop: (item) => !isDayPhase && killEligibleIds.has(item.playerId),
-    drop: (item) => setPlannedNightActions((prev) => ({ ...prev, kill: item.playerId })),
-    collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }),
-      canDrop: monitor.canDrop(),
-    }),
-  }), [isDayPhase, killEligibleIds]);
-
-  const [{ isOver: isSaveOver, canDrop: canSaveDrop }, saveDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
-    accept: DND_TYPE,
-    canDrop: (item) => !isDayPhase && hasAliveDoctors && saveEligibleIds.has(item.playerId),
-    drop: (item) => setPlannedNightActions((prev) => ({ ...prev, save: item.playerId })),
-    collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }),
-      canDrop: monitor.canDrop(),
-    }),
-  }), [hasAliveDoctors, isDayPhase, saveEligibleIds]);
-
-  const [{ isOver: isInvestigateOver, canDrop: canInvestigateDrop }, investigateDropRef] = useDrop<DragItem, void, { isOver: boolean; canDrop: boolean }>(() => ({
-    accept: DND_TYPE,
-    canDrop: (item) => !isDayPhase && hasAliveDetectives && investigateEligibleIds.has(item.playerId),
-    drop: (item) => setPlannedNightActions((prev) => ({ ...prev, investigate: item.playerId })),
-    collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }),
-      canDrop: monitor.canDrop(),
-    }),
-  }), [hasAliveDetectives, investigateEligibleIds, isDayPhase]);
 
   useEffect(() => {
     if (hasAliveDoctors || !plannedSaveId) {
@@ -395,11 +327,7 @@ const DashboardPageContent = () => {
   }, [instantPublicUpdates, refreshUser, syncNightEvents, updatingPublicPreference, user]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-        Loading dashboard...
-      </div>
-    );
+    return <Spinner message="Loading dashboard..." />;
   }
 
   if (error) {
@@ -441,126 +369,6 @@ const DashboardPageContent = () => {
         syncButton: "bg-sky-500 hover:bg-sky-400 text-slate-900",
         phaseBadge: "border-amber-400/60 bg-amber-500/10 text-amber-200",
       };
-
-  const renderVoteDropZone = () => {
-    const selectedPlayer = game?.players.find((player) => player.id === voteTarget) ?? null;
-    const allowedPlayers = alivePlayers;
-    const baseClasses =
-      "flex flex-col gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm transition-colors duration-200 shadow-sm shadow-black/30";
-    const stateClasses = isVoteOver && canVoteDrop
-      ? palette.hoverBorder
-      : selectedPlayer
-        ? palette.readyBorder
-        : palette.idleBorder;
-    const placeholder = allowedPlayers.length === 0 ? "No eligible players" : "Drag a player here";
-
-    return (
-      <div ref={voteDropRef} className={`${baseClasses} ${stateClasses}`}>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold uppercase tracking-wide text-slate-200">Vote Out Player</span>
-          {selectedPlayer && (
-            <button
-              type="button"
-              onClick={() => setVoteTarget(undefined)}
-              className="text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:text-rose-300"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        {selectedPlayer ? (
-          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
-            <PlayerAvatar value={selectedPlayer.avatar} fallbackLabel={selectedPlayer.name} size="sm" />
-            <div className="flex flex-col">
-              <span className="font-semibold">{selectedPlayer.name}</span>
-              <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">{selectedPlayer.role ?? "Unassigned"}</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-400">{placeholder}</p>
-        )}
-        <p className="text-[0.7rem] text-slate-500">
-          {allowedPlayers.length === 0
-            ? "No players currently meet the requirements."
-            : "Drag from the players list on the right."}
-        </p>
-      </div>
-    );
-  };
-
-  type NightDropZoneConfig = {
-    dropRef: ConnectDropTarget;
-    isOver: boolean;
-    canDrop: boolean;
-    isEnabled: boolean;
-    disabledMessage?: string;
-  };
-
-  const renderNightActionDropZone = (
-    action: NightActionType,
-    label: string,
-    allowedPlayers: Player[],
-    selectedPlayer: Player | null | undefined,
-    { dropRef, isOver, canDrop, isEnabled, disabledMessage }: NightDropZoneConfig
-  ) => {
-    const baseClasses =
-      "flex flex-col gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm transition-colors duration-200 shadow-sm shadow-black/30";
-    const stateClasses = !isEnabled
-      ? "border-white/10 bg-slate-950/30 opacity-60"
-      : isOver && canDrop
-      ? palette.hoverBorder
-      : selectedPlayer
-        ? palette.readyBorder
-        : palette.idleBorder;
-    const placeholder = !isEnabled
-      ? disabledMessage ?? "Role eliminated."
-      : allowedPlayers.length === 0
-      ? "No eligible players"
-      : "Drag a player here";
-
-    return (
-      <div ref={dropRef} className={`${baseClasses} ${stateClasses}`}>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold uppercase tracking-wide text-slate-200">{label}</span>
-          {selectedPlayer && isEnabled && (
-            <button
-              type="button"
-              onClick={() => clearNightAction(action)}
-              className="text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:text-rose-300"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        {selectedPlayer && isEnabled ? (
-          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
-            <PlayerAvatar value={selectedPlayer.avatar} fallbackLabel={selectedPlayer.name} size="sm" />
-            <div className="flex flex-col">
-              <span className="font-semibold">{selectedPlayer.name}</span>
-              <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">{selectedPlayer.role ?? "Unassigned"}</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-400">{placeholder}</p>
-        )}
-        <p className="text-[0.7rem] text-slate-500">
-          {!isEnabled
-            ? disabledMessage ?? "This action is unavailable."
-            : allowedPlayers.length === 0
-            ? "No players currently meet the requirements."
-            : "Drag from the players list on the right."}
-        </p>
-        {isEnabled &&
-          action === "kill" &&
-          plannedNightActions.save &&
-          plannedNightActions.save === plannedNightActions.kill && (
-          <p className="text-xs font-semibold text-amber-300">
-            This target will survive; the log will record that the mafia tried to kill them.
-          </p>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className={`relative min-h-screen ${palette.background} text-slate-100`}>
@@ -614,151 +422,51 @@ const DashboardPageContent = () => {
             </div>
           </header>
 
-          <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-3 text-slate-200 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={instantPublicUpdates}
-                  aria-label="Toggle instant public view updates"
-                  aria-busy={updatingPublicPreference}
-                  onClick={() => void handleTogglePublicSync()}
-                  disabled={updatingPublicPreference || !user}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full border transition ${
-                    instantPublicUpdates ? "border-emerald-400/70 bg-emerald-500/60" : "border-white/20 bg-slate-800"
-                  } ${updatingPublicPreference || !user ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
-                      instantPublicUpdates ? "translate-x-5" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-white">Instantly update public view</span>
-                  <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">
-                    {instantPublicUpdates
-                      ? "Player status pushes live to the public screen."
-                      : "Hold player status until you reveal night events."}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3 lg:justify-end">
-              <button
-                onClick={() => switchPhase(isDay ? "night" : "day")}
-                disabled={processingQueuedActions}
-                className={`inline-flex items-center justify-center rounded-2xl px-5 py-2 text-sm font-semibold transition ${palette.primaryButton} ${
-                  processingQueuedActions ? "cursor-not-allowed opacity-80" : ""
-                }`}
-              >
-                {processingQueuedActions ? "Resolving Actions..." : `End ${isDay ? "Day" : "Night"}`}
-              </button>
-              <button
-                onClick={() => finishGame("Villagers")}
-                className="inline-flex items-center justify-center rounded-2xl border border-emerald-400/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-200 transition hover:border-emerald-300"
-              >
-                Villagers Win
-              </button>
-              <button
-                onClick={() => finishGame("Mafia")}
-                className="inline-flex items-center justify-center rounded-2xl border border-rose-400/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-rose-200 transition hover:border-rose-300"
-              >
-                Mafia Win
-              </button>
-              {!instantPublicUpdates && (
-                <button
-                  onClick={() => void syncNightEvents()}
-                  className={`inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold transition ${palette.syncButton}`}
-                  disabled={updatingPublicPreference}
-                >
-                  Reveal Night Events
-                </button>
-              )}
-            </div>
-          </div>
+          <GameControls
+            isDay={isDay}
+            processingQueuedActions={processingQueuedActions}
+            instantPublicUpdates={instantPublicUpdates}
+            updatingPublicPreference={updatingPublicPreference}
+            user={user}
+            palette={palette}
+            onSwitchPhase={(phase) => void switchPhase(phase)}
+            onFinishGame={(team) => void finishGame(team)}
+            onTogglePublicSync={() => void handleTogglePublicSync()}
+            onSyncNightEvents={() => void syncNightEvents()}
+          />
 
           <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-            <section className="space-y-6 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-              <div>
-                <h2 className="text-lg font-semibold text-white">Control center</h2>
-                <p className="text-xs uppercase tracking-wide text-slate-400">
-                  {isDay
-                    ? "Drag an eligible player into the vote zone. The elimination happens when you end the day."
-                    : "Queue the mafia, doctor, and detective actions. They resolve when you end the night."}
-                </p>
-              </div>
-              <div className={`grid gap-5 ${isDay ? "md:grid-cols-1" : "md:grid-cols-2 xl:grid-cols-3"}`}>
-                {isDay ? (
-                  renderVoteDropZone()
-                ) : (
-                  <>
-                    {renderNightActionDropZone(
-                      "kill",
-                      "Mafia Kill",
-                      aliveNonMafiaPlayers,
-                      killTargetPlayer,
-                      {
-                        dropRef: killDropRef,
-                        isOver: isKillOver,
-                        canDrop: canKillDrop,
-                        isEnabled: !isDay,
-                      }
-                    )}
-                    {renderNightActionDropZone(
-                      "save",
-                      "Doctor Save",
-                      alivePlayers,
-                      saveTargetPlayer,
-                      {
-                        dropRef: saveDropRef,
-                        isOver: isSaveOver,
-                        canDrop: canSaveDrop,
-                        isEnabled: !isDay && hasAliveDoctors,
-                        disabledMessage: "No living doctors — unable to save.",
-                      }
-                    )}
-                    {renderNightActionDropZone(
-                      "investigate",
-                      "Detective Investigate",
-                      investigateTargets,
-                      investigateTargetPlayer,
-                      {
-                        dropRef: investigateDropRef,
-                        isOver: isInvestigateOver,
-                        canDrop: canInvestigateDrop,
-                        isEnabled: !isDay && hasAliveDetectives,
-                        disabledMessage: "No living detectives — unable to investigate.",
-                      }
-                    )}
-                  </>
-                )}
-              </div>
-              <div>
-                <label className="text-sm text-slate-300" htmlFor={noteFieldId}>
-                  Notes / summary
-                </label>
-                <textarea
-                  id={noteFieldId}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  rows={3}
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                  placeholder="Optional log message to send with your next action"
-                />
-              </div>
-            </section>
+            {isDay ? (
+              <DayPhasePanel
+                alivePlayers={alivePlayers}
+                voteTarget={voteTarget}
+                onVote={setVoteTarget}
+                onClearVote={() => setVoteTarget(undefined)}
+                note={note}
+                noteId={noteFieldId}
+                onNoteChange={setNote}
+                palette={palette}
+              />
+            ) : (
+              <NightPhasePanel
+                alivePlayers={alivePlayers}
+                aliveNonMafiaPlayers={aliveNonMafiaPlayers}
+                investigateTargets={investigateTargets}
+                hasAliveDoctors={hasAliveDoctors}
+                hasAliveDetectives={hasAliveDetectives}
+                plannedNightActions={plannedNightActions}
+                onPlanAction={(action, id) =>
+                  setPlannedNightActions((prev) => ({ ...prev, [action]: id }))
+                }
+                onClearAction={clearNightAction}
+                note={note}
+                noteId={noteFieldId}
+                onNoteChange={setNote}
+                palette={palette}
+              />
+            )}
 
-            <aside className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-              <h2 className="text-lg font-semibold text-white">Players</h2>
-              <p className="mb-4 text-xs uppercase tracking-wide text-slate-400">Drag living players into the targets.</p>
-              <div className="grid grid-cols-2 gap-3">
-                {sortedPlayers.map((player) => (
-                  <DraggablePlayerCard key={player.id} player={player} />
-                ))}
-              </div>
-            </aside>
+            <PlayerRoster players={sortedPlayers} />
           </div>
 
           <LogsSection
