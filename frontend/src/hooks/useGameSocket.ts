@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 export type GameSocketMessage = {
   event: string;
-  game_id: number;
+  game_id: string;
   status: string;
   phase: string;
   round: number;
@@ -29,7 +29,7 @@ const isGameSocketMessage = (value: unknown): value is GameSocketMessage => {
   return (
     typeof candidate.event === "string" &&
     typeof candidate.status === "string" &&
-    typeof candidate.game_id === "number" &&
+    typeof candidate.game_id === "string" &&
     typeof candidate.phase === "string" &&
     typeof candidate.round === "number"
   );
@@ -117,7 +117,7 @@ const resolveWebSocketBase = () => {
   return stripTrailingSlash(WS_FALLBACKS.production);
 };
 
-export const useGameSocket = (gameId: number | null, options: Options = {}): UseGameSocketResult => {
+export const useGameSocket = (gameId: string | null, options: Options = {}): UseGameSocketResult => {
   const { enabled = true } = options;
   const [status, setStatus] = useState<ConnectionStatus>("closed");
   const optionsRef = useRef<Options>(options);

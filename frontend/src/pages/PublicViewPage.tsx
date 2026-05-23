@@ -297,7 +297,7 @@ const PublicViewPage = () => {
     if (!gameId) return;
     void (async () => {
       try {
-        const data = await api.getGame(Number(gameId));
+        const data = await api.getGame(gameId);
         setGame(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load game");
@@ -305,10 +305,10 @@ const PublicViewPage = () => {
     })();
   }, [gameId]);
 
-  const { status: socketStatus } = useGameSocket(Number(gameId ?? 0), {
+  const { status: socketStatus } = useGameSocket(gameId ?? null, {
     enabled: Boolean(gameId),
     onMessage: (message) => {
-      if (message.game_id !== Number(gameId)) return;
+      if (message.game_id !== gameId) return;
 
       setError(null);
       setGame({
@@ -500,7 +500,7 @@ const PublicViewPage = () => {
               if (gameId) {
                 void (async () => {
                   try {
-                    const data = await api.getGame(Number(gameId));
+                    const data = await api.getGame(gameId);
                     setGame(data);
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Failed to load game");

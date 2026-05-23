@@ -34,7 +34,7 @@ export type GameStatus = "pending" | "active" | "finished";
 export type GamePhase = "day" | "night";
 
 export type GameSummary = {
-  id: number;
+  id: string;
   status: GameStatus;
   current_phase: GamePhase;
   current_round: number;
@@ -146,29 +146,29 @@ export const api = {
 
   listGames: (status?: GameStatus) =>
     apiFetch<GameSummary[]>(status ? `/games/?status_filter=${status}` : "/games/"),
-  getGame: (id: number) => apiFetch<GameDetail>(`/games/${id}`),
+  getGame: (id: string) => apiFetch<GameDetail>(`/games/${id}`),
   createGame: (players: CreateGamePlayer[]) =>
     apiFetch<GameDetail>("/games/new", { method: "POST", body: JSON.stringify({ players }) }),
-  assignRoles: (gameId: number, assignments: { player_id: number; role: string }[]) =>
+  assignRoles: (gameId: string, assignments: { player_id: number; role: string }[]) =>
     apiFetch<GameDetail>(`/games/${gameId}/assign_roles`, {
       method: "POST",
       body: JSON.stringify({ assignments }),
     }),
-  startGame: (gameId: number) => apiFetch<GameDetail>(`/games/${gameId}/start`, { method: "POST" }),
-  sendAction: (gameId: number, payload: GameActionPayload) =>
+  startGame: (gameId: string) => apiFetch<GameDetail>(`/games/${gameId}/start`, { method: "POST" }),
+  sendAction: (gameId: string, payload: GameActionPayload) =>
     apiFetch<GameDetail>(`/games/${gameId}/action`, { method: "POST", body: JSON.stringify(payload) }),
-  sendNightActions: (gameId: number, actions: GameActionPayload[]) =>
+  sendNightActions: (gameId: string, actions: GameActionPayload[]) =>
     apiFetch<GameDetail>(`/games/${gameId}/night_actions`, {
       method: "POST",
       body: JSON.stringify({ actions }),
     }),
-  changePhase: (gameId: number, phase: GamePhase) =>
+  changePhase: (gameId: string, phase: GamePhase) =>
     apiFetch<GameDetail>(`/games/${gameId}/phase`, { method: "POST", body: JSON.stringify({ phase }) }),
-  finishGame: (gameId: number, winningTeam: string) =>
+  finishGame: (gameId: string, winningTeam: string) =>
     apiFetch<GameDetail>(`/games/${gameId}/finish`, {
       method: "POST",
       body: JSON.stringify({ winning_team: winningTeam }),
     }),
-  syncNightEvents: (gameId: number) =>
+  syncNightEvents: (gameId: string) =>
     apiFetch<GameDetail>(`/games/${gameId}/sync_night`, { method: "POST" }),
 };

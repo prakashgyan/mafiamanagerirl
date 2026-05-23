@@ -169,7 +169,7 @@ const AssignRolesPage = () => {
     if (!gameId) return;
     const load = async () => {
       try {
-        const data = await api.getGame(Number(gameId));
+        const data = await api.getGame(gameId);
         setGame(data);
         const preAssigned = data.players.reduce<Record<number, RoleName>>((acc, player) => {
           if (isRoleName(player.role)) {

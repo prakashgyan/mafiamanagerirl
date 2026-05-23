@@ -17,7 +17,7 @@ const GameOverPage = () => {
     if (!gameId) return;
     void (async () => {
       try {
-        const data = await api.getGame(Number(gameId));
+        const data = await api.getGame(gameId);
         setGame(data);
         if (data.status === "finished") {
           void confetti({

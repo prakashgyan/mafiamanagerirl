@@ -75,7 +75,7 @@ const DashboardPageContent = () => {
   const loadGame = useCallback(async () => {
     if (!gameId) return;
     try {
-      const data = await api.getGame(Number(gameId));
+      const data = await api.getGame(gameId);
       setGame(data);
       setError(null);
     } catch (err) {
@@ -96,7 +96,7 @@ const DashboardPageContent = () => {
   useGameSocket(game ? game.id : null, {
     enabled: true,
     onMessage: (message) => {
-      if (!gameId || message.game_id !== Number(gameId)) return;
+      if (!gameId || message.game_id !== gameId) return;
       void loadGame();
     },
   });
