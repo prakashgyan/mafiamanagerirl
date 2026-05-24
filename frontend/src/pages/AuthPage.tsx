@@ -1,6 +1,7 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import logoImage from "../assets/logo.png";
 import { useAuth } from "../context/AuthContext";
 
 const features = [
@@ -80,38 +81,23 @@ const AuthPage = () => {
 
   const isBusy = authSubmitting || demoSubmitting;
 
-  const cursorGlowRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (cursorGlowRef.current) {
-        cursorGlowRef.current.style.left = `${e.clientX}px`;
-        cursorGlowRef.current.style.top = `${e.clientY}px`;
-      }
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    return () => window.removeEventListener("mousemove", onMouseMove);
-  }, []);
-
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-slate-950">
       {/* ── Shared atmospheric background ── */}
       <div className="pointer-events-none absolute inset-0">
-        {/* Cursor-tracking glow */}
-        <div
-          ref={cursorGlowRef}
-          className="absolute h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-500/10 blur-3xl transition-[left,top] duration-500 ease-out"
-          style={{ left: "50%", top: "40%" }}
-        />
-        <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="animate-blob absolute left-[20%] top-[15%] h-[500px] w-[500px] rounded-full bg-sky-500/10 blur-3xl" />
+        <div className="animate-blob animation-delay-4000 absolute right-[15%] top-[40%] h-[420px] w-[420px] rounded-full bg-indigo-500/8 blur-3xl" />
+        <div className="animate-blob animation-delay-8000 absolute bottom-[10%] left-[35%] h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.08),_transparent_55%)]" />
       </div>
 
       {/* ── Left: form panel ── */}
       <div className="relative flex flex-1 flex-col justify-between px-6 py-14 lg:w-1/2">
-        {/* Brand badge — top left */}
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
-          MafiaDesk
-        </span>
+        {/* Brand — top left */}
+        <div className="flex items-center gap-2.5">
+          <img src={logoImage} alt="MafiaDesk" className="h-7 w-auto" draggable={false} />
+          <span className="text-sm font-semibold tracking-wide text-white">MafiaDesk</span>
+        </div>
 
         {/* Centered form */}
         <div className="flex flex-1 flex-col items-center justify-center">
