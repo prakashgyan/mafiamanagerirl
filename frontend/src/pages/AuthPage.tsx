@@ -140,6 +140,9 @@ const AuthPage = () => {
                 required
                 disabled={isBusy}
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </label>
             <label className="block text-sm">

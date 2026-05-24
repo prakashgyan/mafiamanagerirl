@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
-import { api, User } from "../services/api";
+import { api, setUnauthorizedHandler, User } from "../services/api";
 
 type AuthContextValue = {
   user: User | null;
@@ -32,6 +32,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     void refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+  }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const loggedIn = await api.login(username, password);

@@ -68,6 +68,19 @@ export type GameActionPayload = {
   note?: string;
 };
 
+export class UnauthorizedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnauthorizedError";
+  }
+}
+
+let unauthorizedHandler: (() => void) | null = null;
+
+export const setUnauthorizedHandler = (handler: () => void): void => {
+  unauthorizedHandler = handler;
+};
+
 const API_FALLBACKS = {
   development: "http://localhost:8000",
   production: "https://backend.mafiadesk.com",
@@ -138,6 +151,10 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
       }
     } catch {
       // raw text is not JSON — use as-is
+    }
+    if (response.status === 401) {
+      unauthorizedHandler?.();
+      throw new UnauthorizedError(message || "Unauthorized");
     }
     throw new Error(message || `Request failed with ${response.status}`);
   }
