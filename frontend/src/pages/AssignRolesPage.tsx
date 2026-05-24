@@ -15,6 +15,14 @@ const DEFAULT_COUNTS: RoleCounts = DEFAULT_ROLE_COUNTS;
 
 const DND_TYPE = PLAYER_DND_TYPE;
 
+const ROLE_META: Record<RoleName, { icon: string; accent: string; dropActive: string; full: string }> = {
+  Mafia:     { icon: "🔫", accent: "hover:border-rose-400/60",    dropActive: "border-rose-400/70 bg-rose-500/10",    full: "border-rose-400/50 bg-rose-500/10" },
+  Detective: { icon: "🔍", accent: "hover:border-sky-400/60",     dropActive: "border-sky-400/70 bg-sky-500/10",      full: "border-amber-400/60 bg-amber-500/10" },
+  Doctor:    { icon: "💊", accent: "hover:border-emerald-400/60", dropActive: "border-emerald-400/70 bg-emerald-500/10", full: "border-amber-400/60 bg-amber-500/10" },
+  Villager:  { icon: "🏘️", accent: "hover:border-slate-500/60",   dropActive: "border-slate-400/70 bg-slate-500/10",  full: "border-amber-400/60 bg-amber-500/10" },
+  Jester:    { icon: "🃏", accent: "hover:border-violet-400/60",  dropActive: "border-violet-400/70 bg-violet-500/10", full: "border-amber-400/60 bg-amber-500/10" },
+};
+
 type DragPayload = {
   player: Player;
 };
@@ -41,6 +49,7 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove }: RoleColumnPro
     [players.length, capacity, onDrop]
   );
 
+  const meta = ROLE_META[role];
   const full = capacity !== 0 && players.length >= capacity;
 
   return (
@@ -48,18 +57,21 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove }: RoleColumnPro
       ref={dropRef}
       className={`space-y-3 rounded-2xl border px-4 py-4 shadow-sm shadow-black/20 transition ${
         isOver && canDrop
-          ? "border-emerald-400/70 bg-emerald-500/15"
+          ? meta.dropActive
           : full
-          ? "border-amber-400/60 bg-amber-500/10"
-          : "border-slate-800 bg-slate-950/60 hover:border-sky-400/60"
+          ? meta.full
+          : `border-slate-800 bg-slate-950/60 ${meta.accent}`
       }`}
     >
       <header className="flex items-start justify-between gap-2">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-white">{role}</h3>
-          <p className="text-[0.65rem] uppercase tracking-wide text-slate-500">
-            {capacity === 0 ? "Unlimited" : `${capacity} slots`}
-          </p>
+        <div className="flex items-center gap-2">
+          <span className="text-base" aria-hidden>{meta.icon}</span>
+          <div>
+            <h3 className="text-sm font-semibold text-white">{role}</h3>
+            <p className="text-[0.65rem] uppercase tracking-wide text-slate-500">
+              {capacity === 0 ? "Unlimited" : `${capacity} slot${capacity !== 1 ? "s" : ""}`}
+            </p>
+          </div>
         </div>
         <span
           className={`rounded-full px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-wide ${
@@ -74,8 +86,8 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove }: RoleColumnPro
           <AssignedPlayerCard key={player.id} player={player} onRemove={() => onRemove(player.id)} />
         ))}
         {players.length === 0 && (
-          <p className="rounded-xl border border-dashed border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-500">
-            Drop players here
+          <p className="rounded-xl border border-dashed border-slate-800 bg-slate-950/70 px-3 py-3 text-center text-xs text-slate-500">
+            Drop here
           </p>
         )}
       </div>
@@ -126,15 +138,13 @@ const PlayerCard = ({ player }: PlayerCardProps) => {
   return (
     <div
       ref={dragRef}
-      className={`flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm shadow-black/20 transition ${
-        isDragging ? "opacity-40" : "opacity-100"
+      className={`flex cursor-grab items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm shadow-black/20 transition active:cursor-grabbing ${
+        isDragging ? "opacity-40 scale-95" : "opacity-100 hover:border-slate-600"
       }`}
     >
+      <span className="text-slate-600 text-xs select-none" aria-hidden>⠿</span>
       <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
-      <div className="flex flex-col">
-        <span className="font-semibold">{player.name}</span>
-        <span className="text-[0.65rem] uppercase tracking-wide text-slate-500">{player.role ?? "Unassigned"}</span>
-      </div>
+      <span className="font-semibold">{player.name}</span>
     </div>
   );
 };
@@ -272,86 +282,110 @@ const AssignRolesPage = () => {
           <div className="absolute bottom-10 right-[18%] h-80 w-80 rounded-full bg-emerald-400/12 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
         </div>
-          <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
+        <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
 
-        <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
-          <button
-            className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
-            onClick={() => navigate("/profile")}
-          >
-            <span aria-hidden>←</span>
-            Back to Profile
-          </button>
+        <div className="relative z-10 mx-auto max-w-6xl px-6 py-10 lg:py-14">
 
-          <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h1 className="text-3xl font-semibold text-white sm:text-4xl">Assign roles with confidence</h1>
-                  <p className="max-w-2xl text-base text-slate-300">
-                    Drag each player into their faction and keep the balance tight. Once every slot is filled, launch the
-                    next chapter of your Mafia night.
-                  </p>
-                </div>
+          {/* ── Slim hero — same style as NewGamePage ── */}
+          <div className="mb-8">
+            <button
+              className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
+              onClick={() => navigate("/profile")}
+            >
+              <span aria-hidden>←</span> Back to Profile
+            </button>
+            <p className="text-sm font-semibold uppercase tracking-widest text-sky-400">Game #{game.id}</p>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Assign roles</h1>
+            <p className="mt-1 max-w-xl text-sm text-slate-400">
+              Drag each player into their faction. Once every slot is filled you can launch the game.
+            </p>
+          </div>
+
+          {/* ── Stats strip — like ProfileHomePage ── */}
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <div className="flex divide-x divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-slate-900/70 shadow-lg shadow-slate-950/50 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Players</p>
+                <p className="text-lg font-bold text-white">{game.players.length}</p>
               </div>
-              <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center">
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Game</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">#{game.id}</p>
-                  <p className="text-xs text-slate-500">{game.players.length} players</p>
-                </div>
-                <div
-                  className={`rounded-2xl border px-4 py-3 text-center text-sm font-semibold ${
-                    slotsMatch
-                      ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-200"
-                      : "border-rose-400/50 bg-rose-500/10 text-rose-200"
-                  }`}
-                >
-                  <p className="text-xs uppercase tracking-wide">Players / Slots</p>
-                  <p className="mt-1 text-lg">{game.players.length} / {totalSlots}</p>
-                  <p className="text-[0.65rem] text-current">
-                    {slotsMatch ? "Balanced" : "Adjust counts"}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center sm:col-span-2">
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Assignment progress</p>
-                  <p className="mt-1 text-lg font-semibold text-white">
-                    {assignedPlayersCount}/{game.players.length} players placed
-                  </p>
-                  <p className="text-[0.65rem] text-slate-400">{unassignedCount} remaining</p>
-                </div>
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Assigned</p>
+                <p className="text-lg font-bold text-emerald-300">{assignedPlayersCount}</p>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Remaining</p>
+                <p className="text-lg font-bold text-slate-300">{unassignedCount}</p>
               </div>
             </div>
-          </header>
+            <div
+              className={`flex items-center gap-5 rounded-xl border px-5 py-3 shadow-lg shadow-slate-950/50 backdrop-blur-sm ${
+                slotsMatch
+                  ? "border-emerald-400/50 bg-emerald-500/10"
+                  : "border-rose-400/40 bg-rose-500/10"
+              }`}
+            >
+              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Slots</p>
+              <p className={`text-lg font-bold ${slotsMatch ? "text-emerald-200" : "text-rose-200"}`}>
+                {totalSlots} / {game.players.length}
+              </p>
+              <span className={`text-[0.65rem] font-semibold uppercase ${slotsMatch ? "text-emerald-400" : "text-rose-400"}`}>
+                {slotsMatch ? "Balanced ✓" : "Adjust roles"}
+              </span>
+            </div>
+          </div>
 
+          {/* ── Progress bar ── */}
+          <div className="mb-8">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Assignment progress</p>
+              <p className="text-xs text-slate-400">
+                {assignedPlayersCount} / {game.players.length} placed
+              </p>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+                style={{ width: game.players.length > 0 ? `${(assignedPlayersCount / game.players.length) * 100}%` : "0%" }}
+              />
+            </div>
+          </div>
+
+          {/* ── Two-column layout ── */}
           <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
-            <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-              <header className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Unassigned players</h2>
-                <span className="rounded-full border border-slate-700/60 bg-slate-800/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  {unassignedPlayers.length} remaining
-                </span>
-              </header>
-              <div className="space-y-2">
-                {unassignedPlayers.length === 0 && (
-                  <p className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/70 px-4 py-4 text-sm text-slate-400">
-                    Everyone is seated. Make tweaks by removing a player from a role.
-                  </p>
-                )}
-                {unassignedPlayers.map((player) => (
-                  <PlayerCard key={player.id} player={player} />
-                ))}
+
+            {/* Unassigned players — sticky on desktop */}
+            <section className="lg:sticky lg:top-6 lg:self-start">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
+                <header className="mb-4 flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-white">Unassigned</h2>
+                  <span className="rounded-full border border-slate-700/60 bg-slate-800/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                    {unassignedPlayers.length}
+                  </span>
+                </header>
+                <p className="mb-3 text-[0.7rem] text-slate-500 uppercase tracking-wide">Drag a card into a role →</p>
+                <div className="space-y-2">
+                  {unassignedPlayers.length === 0 ? (
+                    <p className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/70 px-4 py-4 text-center text-xs text-slate-500">
+                      Everyone seated ✓
+                    </p>
+                  ) : (
+                    unassignedPlayers.map((player) => (
+                      <PlayerCard key={player.id} player={player} />
+                    ))
+                  )}
+                </div>
               </div>
             </section>
 
+            {/* Role columns */}
             <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-              <header className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <header className="mb-5 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Role columns</h2>
-                  <p className="text-sm text-slate-400">Drop players into their roles. Columns fill based on available slots.</p>
+                  <h2 className="text-base font-semibold text-white">Roles</h2>
+                  <p className="text-sm text-slate-400">Drop players into a faction</p>
                 </div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  {assignedPlayersCount} assigned
+                  {assignedPlayersCount} placed
                 </span>
               </header>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -374,8 +408,8 @@ const AssignRolesPage = () => {
       {isComplete && (
         <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 border-t border-emerald-500/30 bg-slate-950/90 px-6 py-4 backdrop-blur-xl">
           <div>
-            <p className="text-sm font-semibold text-emerald-300">All players assigned — ready to start!</p>
-            <p className="text-xs text-slate-400">{game.players.length} players · {totalSlots} role slots filled</p>
+            <p className="text-sm font-semibold text-emerald-300">All players assigned — ready to launch!</p>
+            <p className="text-xs text-slate-400">{game.players.length} players · {totalSlots} slots filled</p>
           </div>
           <button
             onClick={handleStartGame}
