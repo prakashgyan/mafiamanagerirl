@@ -1,6 +1,6 @@
 import { FC, useEffect, useMemo, useState } from "react";
 import { useDrag, useDrop, DragSourceMonitor, DropTargetMonitor } from "react-dnd";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { api, GameDetail, Player } from "../services/api";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
@@ -254,13 +254,15 @@ const AssignRolesPage = () => {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-rose-300">
-        {error}
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-rose-300">
+        <p className="text-sm">{error}</p>
+        <div className="flex gap-3">
+          <button onClick={() => window.location.reload()} className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-sky-400">Retry</button>
+          <a href="/profile" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white">← Back to Profile</a>
+        </div>
       </div>
     );
   }
-
-  if (!game) return null;
 
   return (
     <ResponsiveDndProvider>
@@ -275,22 +277,15 @@ const AssignRolesPage = () => {
         <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
           <button
             className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/profile")}
           >
             <span aria-hidden>←</span>
-            Back to setup
+            Back to Profile
           </button>
 
           <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-4">
-                <Link
-                  to="/"
-                  aria-label="Go to homepage"
-                  className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
-                >
-                  MafiaDesk
-                </Link>
                 <div className="space-y-2">
                   <h1 className="text-3xl font-semibold text-white sm:text-4xl">Assign roles with confidence</h1>
                   <p className="max-w-2xl text-base text-slate-300">
@@ -328,29 +323,6 @@ const AssignRolesPage = () => {
               </div>
             </div>
           </header>
-
-          <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            {error && (
-              <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200 shadow-lg shadow-rose-500/20">
-                {error}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/80 px-3 py-1 font-semibold uppercase tracking-wide">
-                Drag & drop to assign
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/80 px-3 py-1 font-semibold uppercase tracking-wide">
-                Remove to send back
-              </span>
-            </div>
-            <button
-              onClick={handleStartGame}
-              disabled={!isComplete}
-              className="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-            >
-              Start Game
-            </button>
-          </div>
 
           <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
             <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
@@ -398,6 +370,21 @@ const AssignRolesPage = () => {
           </div>
         </div>
       </div>
+
+      {isComplete && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 border-t border-emerald-500/30 bg-slate-950/90 px-6 py-4 backdrop-blur-xl">
+          <div>
+            <p className="text-sm font-semibold text-emerald-300">All players assigned — ready to start!</p>
+            <p className="text-xs text-slate-400">{game.players.length} players · {totalSlots} role slots filled</p>
+          </div>
+          <button
+            onClick={handleStartGame}
+            className="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400"
+          >
+            Start Game →
+          </button>
+        </div>
+      )}
     </ResponsiveDndProvider>
   );
 };

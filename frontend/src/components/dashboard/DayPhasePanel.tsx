@@ -59,7 +59,7 @@ const DayPhasePanel = ({
   return (
     <section className="space-y-6 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
       <div>
-        <h2 className="text-lg font-semibold text-white">Control center</h2>
+        <h2 className="text-lg font-semibold text-white">Vote Phase</h2>
         <p className="text-xs uppercase tracking-wide text-slate-400">
           Drag an eligible player into the vote zone. The elimination happens when you end the day.
         </p>
@@ -89,13 +89,18 @@ const DayPhasePanel = ({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-slate-400">{placeholder}</p>
+          <div className="flex flex-col items-center gap-2 py-2 text-center">
+            <span className="text-2xl" aria-hidden>👆</span>
+            <p className="text-sm font-medium text-slate-300">
+              {alivePlayers.length === 0 ? "No eligible players" : "Drag a player here to nominate them"}
+            </p>
+            <p className="text-xs text-slate-500">
+              {alivePlayers.length === 0
+                ? "No players currently meet the requirements."
+                : "Grab a player card from the roster on the right →"}
+            </p>
+          </div>
         )}
-        <p className="text-[0.7rem] text-slate-500">
-          {alivePlayers.length === 0
-            ? "No players currently meet the requirements."
-            : "Drag from the players list on the right."}
-        </p>
       </div>
 
       <div>

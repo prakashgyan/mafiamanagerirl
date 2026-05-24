@@ -86,13 +86,6 @@ const FriendsPage = () => {
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-5">
-              <Link
-                to="/"
-                aria-label="Go to homepage"
-                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
-              >
-                MafiaDesk
-              </Link>
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Friends & Regulars</h1>
                 <p className="max-w-2xl text-base text-slate-300">
@@ -110,9 +103,8 @@ const FriendsPage = () => {
           </div>
         </header>
 
-        <section className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-8">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
+        <section className="space-y-8">
+          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
               <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-white">Add a friend</h2>
@@ -244,37 +236,6 @@ const FriendsPage = () => {
                 ))}
               </ul>
             </div>
-          </div>
-
-          <aside className="space-y-8">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-              <h2 className="text-lg font-semibold text-white">Quick tips</h2>
-              <ul className="mt-4 space-y-3 text-sm text-slate-300">
-                <li className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-4">
-                  Pair players with opposite playstyles to keep every accusation unpredictable.
-                </li>
-                <li className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-4">
-                  Flag dependable narrators or chaos agents in your notes to balance each round.
-                </li>
-                <li className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-4">
-                  Rotate roles among regulars to keep everyone guessing.
-                </li>
-              </ul>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-              <h2 className="text-lg font-semibold text-white">Next steps</h2>
-              <p className="mt-3 text-sm text-slate-300">
-                Ready for the next round? Head back to your profile to start a new game or pick up ongoing sessions.
-              </p>
-              <Link
-                to="/profile"
-                className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
-              >
-                Go to Profile
-              </Link>
-            </div>
-          </aside>
         </section>
       </div>
     </div>

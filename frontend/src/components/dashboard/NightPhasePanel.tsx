@@ -98,15 +98,14 @@ const NightDropZone = ({
           </div>
         </div>
       ) : (
-        <p className="text-sm text-slate-400">{placeholder}</p>
+        <div className="flex flex-col items-center gap-1 py-1 text-center">
+          {isEnabled && allowedPlayers.length > 0 && <span className="text-xl" aria-hidden>👆</span>}
+          <p className="text-sm text-slate-400">{placeholder}</p>
+          {isEnabled && allowedPlayers.length > 0 && (
+            <p className="text-xs text-slate-500">Grab a player card from the roster →</p>
+          )}
+        </div>
       )}
-      <p className="text-[0.7rem] text-slate-500">
-        {!isEnabled
-          ? disabledMessage ?? "This action is unavailable."
-          : allowedPlayers.length === 0
-          ? "No players currently meet the requirements."
-          : "Drag from the players list on the right."}
-      </p>
       {isEnabled && action === "kill" && plannedSaveId && plannedSaveId === plannedKillId && (
         <p className="text-xs font-semibold text-amber-300">
           This target will survive; the log will record that the mafia tried to kill them.
@@ -152,7 +151,7 @@ const NightPhasePanel = ({
   return (
     <section className="space-y-6 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
       <div>
-        <h2 className="text-lg font-semibold text-white">Control center</h2>
+        <h2 className="text-lg font-semibold text-white">Night Actions</h2>
         <p className="text-xs uppercase tracking-wide text-slate-400">
           Queue the mafia, doctor, and detective actions. They resolve when you end the night.
         </p>

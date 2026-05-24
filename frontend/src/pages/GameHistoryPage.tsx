@@ -100,13 +100,6 @@ const GameHistoryPage = () => {
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-5">
-              <Link
-                to="/"
-                aria-label="Go to homepage"
-                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
-              >
-                MafiaDesk
-              </Link>
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Game History</h1>
                 <p className="max-w-2xl text-base text-slate-300">
@@ -132,36 +125,30 @@ const GameHistoryPage = () => {
           </div>
         </header>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-white">Filter by status</h2>
-              <p className="text-sm text-slate-400">Select a phase to focus on the games that matter right now.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {filterOptions.map((option) => {
-                const isActive = statusFilter === option.id;
-                const count = option.id === "all" ? totals.all : totals[option.id];
-                return (
-                  <button
-                    key={option.id}
-                    onClick={() => setStatusFilter(option.id)}
-                    className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
-                      isActive
-                        ? "bg-white text-slate-900 shadow"
-                        : "border border-slate-700/60 text-slate-300 hover:border-slate-500"
-                    }`}
-                  >
-                    {option.label}
-                    <span className="ml-2 inline-flex h-6 min-w-[2.5rem] items-center justify-center rounded-full bg-slate-900/60 px-2 text-[0.7rem] text-slate-300">
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter games by status">
+          {filterOptions.map((option) => {
+            const isActive = statusFilter === option.id;
+            const count = option.id === "all" ? totals.all : totals[option.id];
+            return (
+              <button
+                key={option.id}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setStatusFilter(option.id)}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  isActive
+                    ? "bg-white text-slate-900 shadow"
+                    : "border border-slate-700/60 text-slate-300 hover:border-slate-500 hover:text-white"
+                }`}
+              >
+                {option.label}
+                <span className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.65rem] ${isActive ? "bg-slate-900/60 text-slate-300" : "bg-slate-800 text-slate-400"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
         <section className="space-y-6">
           {loading && <Spinner message="Loading game history..." fullScreen={false} />}
@@ -173,8 +160,22 @@ const GameHistoryPage = () => {
           )}
 
           {!loading && !error && filteredGames.length === 0 && (
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 text-center text-sm text-slate-300">
-              No games found for this filter.
+            <div className="flex flex-col items-center gap-4 rounded-3xl border border-slate-800 bg-slate-900/70 p-12 text-center">
+              <span className="text-5xl" aria-hidden>🎲</span>
+              <p className="text-base font-semibold text-slate-200">No games here yet</p>
+              <p className="text-sm text-slate-400">
+                {statusFilter === "all"
+                  ? "You haven't run any Mafia sessions. Start your first game!"
+                  : `No ${statusFilter} games found. Try a different filter.`}
+              </p>
+              {statusFilter === "all" && (
+                <button
+                  onClick={() => navigate("/games/new")}
+                  className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-sky-400"
+                >
+                  Create New Game →
+                </button>
+              )}
             </div>
           )}
 

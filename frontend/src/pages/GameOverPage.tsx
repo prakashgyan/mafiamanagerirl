@@ -1,12 +1,13 @@
 import confetti from "canvas-confetti";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import LogsSection from "../components/LogTimeline";
 import { api, GameDetail } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
 import BackdropLogo from "../components/BackdropLogo";
 import Spinner from "../components/Spinner";
+import { RoleBadge } from "../components/RoleBadge";
 
 const GameOverPage = () => {
   const { gameId } = useParams();
@@ -35,8 +36,12 @@ const GameOverPage = () => {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-rose-300">
-        {error}
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-rose-300">
+        <p className="text-sm">{error}</p>
+        <div className="flex gap-3">
+          <button onClick={() => window.location.reload()} className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-sky-400">Retry</button>
+          <a href="/profile" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white">← Back to Profile</a>
+        </div>
       </div>
     );
   }
@@ -71,6 +76,11 @@ const GameOverPage = () => {
             badge: "border-sky-400/40 bg-sky-500/15 text-sky-100",
           };
 
+  const winnerEmoji =
+    winnerLower.includes("mafia") ? "🔪" :
+    winnerLower.includes("jester") ? "🃏" :
+    winnerLower.includes("villager") || winnerLower.includes("town") ? "🌾" : "🏆";
+
   const winnerLine = winner ? `${winner} Win!` : "Winner not declared";
 
   return (
@@ -85,27 +95,33 @@ const GameOverPage = () => {
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-12 lg:py-16">
         <button
           className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/profile")}
         >
           <span aria-hidden>←</span>
-          Back
+          Back to Profile
         </button>
+
+        {/* Dramatic winner hero */}
+        <div className={`mb-8 rounded-3xl border ${winnerPalette.border} ${winnerPalette.background} px-6 py-12 text-center shadow-2xl shadow-black/40 backdrop-blur-xl lg:py-16`}>
+          <div className="text-6xl mb-4" aria-hidden>{winnerEmoji}</div>
+          <span className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-widest ${winnerPalette.badge} mb-4`}>
+            Final Verdict — Game #{game.id}
+          </span>
+          <h1 className={`text-4xl font-bold sm:text-5xl lg:text-6xl ${winnerPalette.text} drop-shadow-lg`}>{winnerLine}</h1>
+          <p className="mt-4 text-base text-slate-300 max-w-md mx-auto">
+            {winner
+              ? `Round ${game.current_round} · ${alivePlayers.length} survivor${alivePlayers.length !== 1 ? "s" : ""} · ${eliminatedPlayers.length} eliminated`
+              : "Declare a winner to close the loop."}
+          </p>
+        </div>
 
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-4">
-              <Link
-                to="/"
-                aria-label="Go to homepage"
-                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
-              >
-                MafiaDesk
-              </Link>
               <div className="space-y-2">
-                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Game over summary</h1>
+                <h2 className="text-2xl font-semibold text-white sm:text-3xl">Game summary</h2>
                 <p className="text-sm text-slate-300">
-                  Game #{game.id} wrapped on round {game.current_round}. Review the final standings, then queue up your next
-                  dramatic showdown.
+                  Game #{game.id} · Round {game.current_round}
                 </p>
               </div>
             </div>
@@ -123,20 +139,6 @@ const GameOverPage = () => {
                 <p className="mt-1 text-lg font-semibold text-rose-200">{eliminatedPlayers.length}</p>
               </div>
             </div>
-          </div>
-
-          <div
-            className={`mt-8 rounded-3xl border ${winnerPalette.border} ${winnerPalette.background} px-6 py-5 text-center shadow-inner shadow-black/20 lg:px-8 lg:py-6`}
-          >
-            <span className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-wide ${winnerPalette.badge}`}>
-              Final Verdict
-            </span>
-            <h2 className={`mt-3 text-2xl font-semibold sm:text-3xl ${winnerPalette.text}`}>{winnerLine}</h2>
-            <p className="mt-3 text-sm text-slate-300">
-              {winner
-                ? "Celebrate the winning faction and study their path to victory."
-                : "Declare a winner to close the loop, or re-open the game if a recount is needed."}
-            </p>
           </div>
         </header>
 
@@ -167,10 +169,10 @@ const GameOverPage = () => {
                       <p className="text-base font-semibold text-white">
                         {player.name}
                         {!alive && (
-                          <span className="ml-2 text-xs font-normal uppercase tracking-wide text-rose-200">Eliminated</span>
+                         <span className="ml-2 text-xs font-normal uppercase tracking-wide text-rose-300">Eliminated</span>
                         )}
                       </p>
-                      <p className="mt-1 text-xs uppercase tracking-wide text-slate-300">{player.role ?? "Unknown role"}</p>
+                     <RoleBadge role={player.role} className="mt-1" />
                     </div>
                   </div>
                 );

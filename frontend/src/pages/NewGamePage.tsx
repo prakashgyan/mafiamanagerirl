@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import PlayerAvatar from "../components/PlayerAvatar";
 import { api, CreateGamePlayer, Friend } from "../services/api";
@@ -218,22 +218,15 @@ const NewGamePage = () => {
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-12">
         <button
           className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/profile")}
         >
           <span aria-hidden>←</span>
-          Back to dashboard
+          Back to Profile
         </button>
 
         <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-4">
-              <Link
-                to="/"
-                aria-label="Go to homepage"
-                className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-sky-100"
-              >
-                MafiaDesk
-              </Link>
               <div className="space-y-2">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Spin up a fresh Mafia night</h1>
                 <p className="max-w-2xl text-base text-slate-300">

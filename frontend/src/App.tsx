@@ -10,6 +10,7 @@ import NewGamePage from "./pages/NewGamePage";
 import ProfileHomePage from "./pages/ProfileHomePage";
 import PublicViewPage from "./pages/PublicViewPage";
 import FriendsPage from "./pages/FriendsPage";
+import NavBar from "./components/NavBar";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -27,7 +28,12 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
     return <Navigate to="/" replace state={{ from: location }} />;
   }
 
-  return children;
+  return (
+    <>
+      <NavBar />
+      {children}
+    </>
+  );
 };
 
 const App = () => {
@@ -84,14 +90,8 @@ const App = () => {
           </RequireAuth>
         }
       />
-      <Route
-        path="/games/:gameId/public"
-        element={
-          <RequireAuth>
-            <PublicViewPage />
-          </RequireAuth>
-        }
-      />
+      {/* Public view is intentionally unauthenticated — shareable with players/observers */}
+      <Route path="/games/:gameId/public" element={<PublicViewPage />} />
       <Route
         path="/games/:gameId/over"
         element={

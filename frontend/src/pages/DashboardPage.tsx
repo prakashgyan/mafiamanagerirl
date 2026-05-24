@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
 import LogsSection from "../components/LogTimeline";
@@ -332,8 +332,12 @@ const DashboardPageContent = () => {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-rose-300">
-        {error}
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-rose-300">
+        <p className="text-sm">{error}</p>
+        <div className="flex gap-3">
+          <button onClick={() => void loadGame()} className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-sky-400">Retry</button>
+          <a href="/profile" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white">← Back to Profile</a>
+        </div>
       </div>
     );
   }
@@ -382,7 +386,7 @@ const DashboardPageContent = () => {
         <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
           <button
             className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/profile")}
           >
             <span aria-hidden>←</span>
             Back
@@ -391,13 +395,6 @@ const DashboardPageContent = () => {
           <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-4">
-                <Link
-                  to="/"
-                  aria-label="Go to homepage"
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition hover:opacity-90 ${palette.badge}`}
-                >
-                  MafiaDesk
-                </Link>
                 <div className="space-y-2">
                   <h1 className="text-3xl font-semibold text-white sm:text-4xl">Management dashboard</h1>
                   <p className="text-sm text-slate-300">

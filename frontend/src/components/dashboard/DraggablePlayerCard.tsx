@@ -1,8 +1,9 @@
 import { useDrag } from "react-dnd";
 
 import { Player } from "../../services/api";
-import { getPlayerCardClasses, getRoleLabelClass } from "../../utils/playerStyles";
+import { getPlayerCardClasses } from "../../utils/playerStyles";
 import PlayerAvatar from "../PlayerAvatar";
+import { RoleBadge } from "../RoleBadge";
 import { PLAYER_DND_TYPE } from "../../constants/roles";
 
 type DragItem = { playerId: number };
@@ -35,10 +36,8 @@ const DraggablePlayerCard = ({ player }: DraggablePlayerCardProps) => {
       <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" className="mt-1" />
       <div className="flex flex-col gap-1">
         <p className="font-semibold text-white">{player.name}</p>
-        <p className={`text-xs uppercase tracking-wide ${getRoleLabelClass(player)}`}>
-          {player.role ?? "Unassigned"}
-        </p>
-        {!player.is_alive && <p className="text-[0.65rem] text-slate-400">Eliminated</p>}
+        <RoleBadge role={player.role} />
+        {!player.is_alive && <p className="text-[0.65rem] text-rose-300/80">Eliminated</p>}
       </div>
     </div>
   );
