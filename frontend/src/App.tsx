@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
+import BlobBackground from "./components/BlobBackground";
 import AssignRolesPage from "./pages/AssignRolesPage";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -30,6 +31,7 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 
   return (
     <>
+      <BlobBackground />
       <NavBar />
       {children}
     </>
