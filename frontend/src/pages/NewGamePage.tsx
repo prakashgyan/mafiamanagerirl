@@ -248,14 +248,14 @@ const NewGamePage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-8">
 
-          {/* ── Two-column layout matching profile ── */}
-          <div className="grid gap-8 lg:grid-cols-[1.8fr_1fr]">
+          {/* ── Two-column layout — equal halves ── */}
+          <div className="grid gap-8 lg:grid-cols-2">
 
-            {/* LEFT — Friends list */}
+            {/* LEFT — Players list */}
             <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur-sm">
               <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Friends</h2>
+                  <h2 className="text-xl font-semibold text-white">Players</h2>
                   <p className="text-sm text-slate-400">Tap to toggle a player in or out</p>
                 </div>
                 <span className="rounded-full border border-slate-700/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
@@ -274,8 +274,8 @@ const NewGamePage = () => {
                 </div>
               )}
 
-              {/* Compact single-row friend list */}
-              <ul className="space-y-2">
+              {/* Two-column player grid */}
+              <ul className="grid gap-2 sm:grid-cols-2">
                 {friends.map((friend) => {
                   const active = selectedFriendIds.includes(friend.id);
                   return (
@@ -337,7 +337,7 @@ const NewGamePage = () => {
                   </p>
                 )}
 
-                <ul className="space-y-2">
+                <ul className="grid gap-2 sm:grid-cols-2">
                   {/* Friends already selected */}
                   {selectedFriends.map((friend) => (
                     <li
