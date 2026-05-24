@@ -1,10 +1,9 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PlayerAvatar from "../components/PlayerAvatar";
 import { api, CreateGamePlayer, Friend } from "../services/api";
 import { getRandomAnimalAvatar, normalizeAvatar } from "../utils/avatarOptions";
-import BackdropLogo from "../components/BackdropLogo";
 import { ROLE_KEYS, RoleCounts, DEFAULT_ROLE_COUNTS } from "../constants/roles";
 
 const defaultRoleCounts: RoleCounts = DEFAULT_ROLE_COUNTS;
@@ -205,127 +204,198 @@ const NewGamePage = () => {
   };
 
   const slotsMatch = totalPlayers === totalRoles;
+  const canSubmit = totalPlayers > 0 && slotsMatch;
+
+  const handleCustomPlayerKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddCustomPlayer();
+    }
+  };
+
+  const ROLE_ICONS: Record<string, string> = {
+    Mafia: "🔫",
+    Detective: "🔍",
+    Doctor: "💊",
+    Villager: "🏘️",
+    Jester: "🃏",
+  };
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[12%] top-0 h-64 w-64 rounded-full bg-sky-500/15 blur-3xl" />
-        <div className="absolute bottom-10 right-[18%] h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_55%)]" />
-      </div>
-      <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
+    <div className="relative min-h-screen text-slate-100">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:py-14">
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-12">
-        <button
-          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
-          onClick={() => navigate("/profile")}
-        >
-          <span aria-hidden>←</span>
-          Back to Profile
-        </button>
+        {/* Page header — slim, matching profile style */}
+        <div>
+          <button
+            className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
+            onClick={() => navigate("/profile")}
+          >
+            <span aria-hidden>←</span> Back to Profile
+          </button>
+          <p className="text-sm font-semibold uppercase tracking-widest text-sky-400">New Game</p>
+          <h1 className="text-3xl font-semibold text-white sm:text-4xl">Spin up a Mafia night</h1>
+          <p className="mt-1 max-w-xl text-sm text-slate-400">
+            Pick your crew, balance the roles, and let the storytelling begin.
+          </p>
+        </div>
 
-        <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Spin up a fresh Mafia night</h1>
-                <p className="max-w-2xl text-base text-slate-300">
-                  Pick your crew, balance the roles, and let the storytelling begin. We’ll handle the setup so you can
-                  keep the suspense dialed in.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Players Selected</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{totalPlayers}</p>
-              </div>
-              <div
-                className={`rounded-2xl border px-4 py-3 text-center text-sm font-semibold ${
-                  slotsMatch
-                    ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-200"
-                    : "border-rose-400/50 bg-rose-500/10 text-rose-200"
-                }`}
-              >
-                <p className="text-xs uppercase tracking-wide">Players / Slots</p>
-                <p className="mt-1 text-lg">{totalPlayers} players / {totalRoles} slots</p>
-              </div>
-            </div>
+        {error && (
+          <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200 shadow-lg shadow-rose-500/20">
+            {error}
           </div>
-        </header>
+        )}
 
-        <form onSubmit={handleSubmit} className="space-y-10">
-          {error && (
-            <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200 shadow-lg shadow-rose-500/20">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="space-y-8">
 
-          <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-            <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-white">Build your player list</h2>
-                <p className="text-sm text-slate-400">Mix regulars and custom guests. Everyone you add appears below.</p>
-              </div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                {totalPlayers} players selected
-              </span>
-            </header>
+          {/* ── Two-column layout matching profile ── */}
+          <div className="grid gap-8 lg:grid-cols-[1.8fr_1fr]">
 
-            <div className="grid gap-6 lg:grid-cols-[1.2fr_0.9fr]">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Friends list</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {friends.map((friend) => {
-                    const active = selectedFriendIds.includes(friend.id);
-                    return (
+            {/* LEFT — Friends list */}
+            <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur-sm">
+              <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Friends</h2>
+                  <p className="text-sm text-slate-400">Tap to toggle a player in or out</p>
+                </div>
+                <span className="rounded-full border border-slate-700/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                  {selectedFriendIds.length} / {friends.length} selected
+                </span>
+              </header>
+
+              {loading && (
+                <p className="text-sm text-slate-400">Loading friends…</p>
+              )}
+
+              {!loading && friends.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 px-4 py-8 text-center">
+                  <p className="text-sm text-slate-400">No friends saved yet.</p>
+                  <p className="mt-1 text-xs text-slate-500">Add custom players on the right, or visit Friends to build your roster.</p>
+                </div>
+              )}
+
+              {/* Compact single-row friend list */}
+              <ul className="space-y-2">
+                {friends.map((friend) => {
+                  const active = selectedFriendIds.includes(friend.id);
+                  return (
+                    <li key={friend.id}>
                       <button
                         type="button"
-                        key={friend.id}
                         onClick={() => toggleFriend(friend.id)}
-                        className={`flex w-full flex-col items-start gap-2 rounded-2xl border px-4 py-3 text-left transition ${
+                        className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                           active
-                            ? "border-sky-400/70 bg-sky-500/15 text-white shadow-lg shadow-sky-500/20"
-                            : "border-slate-800 bg-slate-900/70 hover:border-sky-400/60"
+                            ? "border-sky-400/70 bg-sky-500/15 shadow-lg shadow-sky-500/10"
+                            : "border-slate-800 bg-slate-900/70 hover:border-sky-400/40"
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="sm" />
-                          <span className="text-sm font-semibold">{friend.name}</span>
+                        <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-white">{friend.name}</p>
+                          {friend.description && (
+                            <p className="truncate text-xs text-slate-400">{friend.description}</p>
+                          )}
                         </div>
-                        {friend.description && <span className="text-xs text-slate-300">{friend.description}</span>}
+                        {/* Checkmark indicator */}
                         <span
-                          className={`mt-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${
-                            active ? "bg-sky-500/30 text-sky-200" : "bg-slate-800/80 text-slate-400"
+                          className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border text-xs transition ${
+                            active
+                              ? "border-sky-400 bg-sky-500/30 text-sky-200"
+                              : "border-slate-700 text-slate-600"
                           }`}
+                          aria-hidden
                         >
-                          {active ? "Selected" : "Tap to add"}
+                          {active ? "✓" : ""}
                         </span>
                       </button>
-                    );
-                  })}
-                  {!loading && friends.length === 0 && (
-                    <p className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/70 px-4 py-5 text-sm text-slate-400">
-                      No friends saved yet. Add custom players below or visit the Friends page to build your roster.
-                    </p>
-                  )}
-                  {loading && (
-                    <p className="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-5 text-sm text-slate-400">
-                      Loading friends…
-                    </p>
-                  )}
-                </div>
-              </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
 
-              <div className="space-y-5">
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Add custom players</h3>
-                  <div className="mt-3 flex gap-2">
+            {/* RIGHT — Crew panel */}
+            <aside className="space-y-6">
+
+              {/* Selected crew */}
+              <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur-sm">
+                <header className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Your crew</h2>
+                    <p className="text-sm text-slate-400">
+                      {totalPlayers > 0
+                        ? `${totalPlayers} player${totalPlayers !== 1 ? "s" : ""} in the game`
+                        : "No one added yet"}
+                    </p>
+                  </div>
+                  <span className="text-2xl font-bold text-white">{totalPlayers}</span>
+                </header>
+
+                {totalPlayers === 0 && (
+                  <p className="rounded-xl border border-dashed border-slate-700 bg-slate-950/40 py-5 text-center text-xs text-slate-500">
+                    Select friends on the left or add custom names below.
+                  </p>
+                )}
+
+                <ul className="space-y-2">
+                  {/* Friends already selected */}
+                  {selectedFriends.map((friend) => (
+                    <li
+                      key={`friend-${friend.id}`}
+                      className="flex items-center gap-3 rounded-2xl border border-sky-400/30 bg-sky-500/10 px-3 py-2"
+                    >
+                      <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{friend.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleFriend(friend.id)}
+                        className="flex-shrink-0 rounded-lg border border-slate-700/60 px-2 py-0.5 text-xs text-slate-400 transition hover:border-rose-400/50 hover:text-rose-300"
+                        aria-label={`Remove ${friend.name}`}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+
+                  {/* Custom players */}
+                  {customPlayers.map((player) => (
+                    <li
+                      key={`custom-${player}`}
+                      className="flex items-center gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2"
+                    >
+                      <PlayerAvatar value={customPlayerAvatars[player]} fallbackLabel={player} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{player}</span>
+                      <button
+                        type="button"
+                        onClick={() => rerollCustomAvatar(player)}
+                        className="flex-shrink-0 rounded-lg border border-slate-700/60 px-2 py-0.5 text-xs text-slate-400 transition hover:border-emerald-400/50 hover:text-emerald-300"
+                        title="Reroll avatar"
+                        aria-label={`Reroll avatar for ${player}`}
+                      >
+                        🎲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomPlayer(player)}
+                        className="flex-shrink-0 rounded-lg border border-slate-700/60 px-2 py-0.5 text-xs text-slate-400 transition hover:border-rose-400/50 hover:text-rose-300"
+                        aria-label={`Remove ${player}`}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Add custom player */}
+                <div className="mt-4 border-t border-slate-800 pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Add a guest</p>
+                  <div className="flex gap-2">
                     <input
                       value={customName}
                       onChange={(event: ChangeEvent<HTMLInputElement>) => setCustomName(event.target.value)}
-                      className="flex-1 rounded-xl border border-slate-700/70 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-                      placeholder="Enter a name"
+                      onKeyDown={handleCustomPlayerKeyDown}
+                      className="flex-1 rounded-xl border border-slate-700/70 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                      placeholder="Enter a name…"
                     />
                     <button
                       type="button"
@@ -336,106 +406,61 @@ const NewGamePage = () => {
                     </button>
                   </div>
                 </div>
-
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                  <h4 className="text-xs uppercase tracking-wide text-slate-400">Currently selected</h4>
-                  {totalPlayers === 0 && <p className="mt-3 text-sm text-slate-500">No players yet. Add at least one to continue.</p>}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {selectedFriends.map((friend) => (
-                      <span
-                        key={`friend-${friend.id}`}
-                        className="group inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/15 px-3 py-1 text-xs font-medium text-sky-100"
-                      >
-                        <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="xs" />
-                        <span>{friend.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => toggleFriend(friend.id)}
-                          className="rounded-full bg-slate-900/60 px-1 text-[0.65rem] uppercase tracking-wide text-sky-200 opacity-0 transition group-hover:opacity-100"
-                        >
-                          Remove
-                        </button>
-                      </span>
-                    ))}
-                    {customPlayers.map((player) => (
-                      <span
-                        key={`custom-${player}`}
-                        className="group inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100"
-                      >
-                        <PlayerAvatar value={customPlayerAvatars[player]} fallbackLabel={player} size="xs" />
-                        <span>{player}</span>
-                        <button
-                          type="button"
-                          onClick={() => rerollCustomAvatar(player)}
-                          className="rounded-full bg-slate-900/60 px-1 text-[0.65rem] uppercase tracking-wide text-emerald-200 opacity-0 transition group-hover:opacity-100"
-                        >
-                          Reroll
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeCustomPlayer(player)}
-                          className="rounded-full bg-slate-900/60 px-1 text-[0.65rem] uppercase tracking-wide text-emerald-200 opacity-0 transition group-hover:opacity-100"
-                        >
-                          Remove
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
               </div>
-            </div>
-          </section>
+            </aside>
+          </div>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
-            <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* ── Role distribution — compact row layout ── */}
+          <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur-sm">
+            <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold text-white">Role distribution</h2>
-                <p className="text-sm text-slate-400">Balance your factions and keep the mystery tight.</p>
+                <p className="text-sm text-slate-400">Balance factions — role slots must equal players.</p>
               </div>
-              <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={applySuggestedRoles}
                   disabled={totalPlayers <= 0}
-                  className="inline-flex items-center justify-center rounded-full border border-sky-400/50 bg-sky-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:border-sky-300/70 hover:text-sky-50 disabled:cursor-not-allowed disabled:border-slate-700/60 disabled:bg-slate-800/70 disabled:text-slate-400"
+                  className="rounded-full border border-sky-400/50 bg-sky-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:border-sky-300/70 hover:text-sky-50 disabled:cursor-not-allowed disabled:border-slate-700/60 disabled:bg-slate-800/70 disabled:text-slate-400"
                 >
                   Use suggested
                 </button>
                 <span
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                     slotsMatch
                       ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-200"
                       : "border-rose-400/50 bg-rose-500/10 text-rose-200"
                   }`}
                 >
-                  {totalPlayers} players / {totalRoles} slots
+                  {totalPlayers}P / {totalRoles} slots
                 </span>
               </div>
             </header>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            {/* Compact horizontal rows — one per role */}
+            <div className="space-y-3">
               {ROLE_KEYS.map((role) => (
                 <div
                   key={role}
-                  role="group"
-                  aria-label={`${role} role count`}
-                  className="flex min-h-[150px] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-5 text-center shadow-sm shadow-black/20 transition hover:border-sky-400/60"
+                  className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-3 transition hover:border-slate-700"
                 >
-                  <span className="text-sm font-semibold text-white">{role}</span>
-                  <div className="flex items-center gap-3">
+                  <span className="text-xl" aria-hidden>{ROLE_ICONS[role]}</span>
+                  <span className="flex-1 text-sm font-semibold text-white">{role}</span>
+                  <div className="flex items-center gap-3" role="group" aria-label={`${role} count`}>
                     <button
                       type="button"
                       onClick={() => adjustRoleCount(role, -1)}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
+                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-base font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
                       aria-label={`Decrease ${role}`}
                     >
-                      -
+                      −
                     </button>
-                    <span className="min-w-[2.75rem] text-center text-xl font-semibold text-white">{roleCounts[role] ?? 0}</span>
+                    <span className="w-8 text-center text-lg font-bold text-white">{roleCounts[role] ?? 0}</span>
                     <button
                       type="button"
                       onClick={() => adjustRoleCount(role, 1)}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-lg font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
+                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900 text-base font-semibold text-slate-300 transition hover:border-sky-400 hover:text-white"
                       aria-label={`Increase ${role}`}
                     >
                       +
@@ -444,20 +469,29 @@ const NewGamePage = () => {
                 </div>
               ))}
             </div>
+
             <p className="mt-4 text-xs text-slate-400">
               {slotsMatch
-                ? "Perfect! Your player count matches the available roles."
-                : "You’ll need the same number of role slots as players before starting the game."}
+                ? "✓ Role slots match your player count — you're ready to go."
+                : `Adjust roles until the slot count equals ${totalPlayers} player${totalPlayers !== 1 ? "s" : ""}.`}
             </p>
           </section>
 
-          <button
-            type="submit"
-            className="w-full rounded-2xl bg-emerald-500 px-6 py-3 text-lg font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-            disabled={totalPlayers === 0}
-          >
-            Create Game & Assign Roles
-          </button>
+          {/* Submit */}
+          <div className="relative" title={!canSubmit ? (totalPlayers === 0 ? "Add at least one player" : `Role slots (${totalRoles}) must equal players (${totalPlayers})`) : undefined}>
+            <button
+              type="submit"
+              className="w-full rounded-2xl bg-emerald-500 px-6 py-4 text-lg font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              disabled={!canSubmit}
+            >
+              Create Game & Assign Roles →
+            </button>
+            {!canSubmit && totalPlayers > 0 && (
+              <p className="mt-2 text-center text-xs text-rose-300">
+                {slotsMatch ? "" : `Role slots (${totalRoles}) don't match player count (${totalPlayers}) — adjust above.`}
+              </p>
+            )}
+          </div>
         </form>
       </div>
     </div>
