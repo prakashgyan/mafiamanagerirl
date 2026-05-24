@@ -435,6 +435,7 @@ class InMemoryDataStore:
             current_phase=current_phase,
             current_round=current_round,
             winning_team=winning_team,
+            created_at=utc_now(),
         )
         self._games[game_id] = game
         self._invalidate_game_cache(game_id)

@@ -47,6 +47,7 @@ class Game(BaseModel):
     current_phase: GamePhase = GamePhase.DAY
     current_round: int = 1
     winning_team: str | None = None
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

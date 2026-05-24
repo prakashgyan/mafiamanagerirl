@@ -36,10 +36,22 @@ def run() -> None:
     engine = create_engine(settings.database_url)
 
     with engine.begin() as conn:
-        # Fetch existing game rows
+        # Always-run schema additions
+        conn.execute(text(
+            "ALTER TABLE games ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()"
+        ))
+        print("Ensured games.created_at column exists.")
+
+        # Fetch existing game rows (integer IDs) — skip if already migrated to codes
         games = conn.execute(text("SELECT id FROM games ORDER BY id")).fetchall()
         if not games:
-            print("No games found — nothing to migrate.")
+            print("No games found — integer→code migration skipped.")
+            return
+
+        # Check if IDs are still integers (migration already done if they're strings like "A3BX7K")
+        first_id = games[0][0]
+        if not str(first_id).isdigit():
+            print("Game IDs already alphanumeric — integer→code migration skipped.")
             return
 
         used_codes: set[str] = set()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import get_settings
@@ -10,6 +10,14 @@ from .orm_models import Base
 _engine = None
 SessionLocal = None
 
+def _run_migrations(engine) -> None:
+    """Apply incremental schema changes not covered by create_all."""
+    with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE games ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()"
+        ))
+        conn.commit()
+
 def init_db():
     global _engine, SessionLocal
     settings = get_settings()
@@ -18,6 +26,7 @@ def init_db():
     _engine = create_engine(settings.database_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     Base.metadata.create_all(bind=_engine)
+    _run_migrations(_engine)
 
 def get_db():
     settings = get_settings()

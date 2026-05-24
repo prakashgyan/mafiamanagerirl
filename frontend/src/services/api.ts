@@ -11,6 +11,14 @@ export type Friend = {
   image?: string | null;
 };
 
+export type LeaderboardEntry = {
+  friend_id: number;
+  name: string;
+  image?: string | null;
+  wins: number;
+  games_played: number;
+};
+
 export type Player = {
   id: number;
   name: string;
@@ -39,6 +47,7 @@ export type GameSummary = {
   current_phase: GamePhase;
   current_round: number;
   winning_team?: string | null;
+  created_at?: string | null;
 };
 
 export type GameDetail = GameSummary & {
@@ -154,6 +163,8 @@ export const api = {
     apiFetch<Friend>("/friends/", { method: "POST", body: JSON.stringify(payload) }),
   deleteFriend: (friendId: number) =>
     apiFetch<void>(`/friends/${friendId}`, { method: "DELETE" }),
+
+  getLeaderboard: () => apiFetch<LeaderboardEntry[]>("/stats/leaderboard"),
 
   listGames: (status?: GameStatus) =>
     apiFetch<GameSummary[]>(status ? `/games/?status_filter=${status}` : "/games/"),

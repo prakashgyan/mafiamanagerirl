@@ -103,6 +103,7 @@ class GameBase(BaseModel):
     current_phase: GamePhase
     current_round: int
     winning_team: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class GameCreateRequest(BaseModel):

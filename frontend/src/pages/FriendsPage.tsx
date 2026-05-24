@@ -87,7 +87,7 @@ const FriendsPage = () => {
           <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-5">
               <div className="space-y-3">
-                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Friends & Regulars</h1>
+                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Players & Regulars</h1>
                 <p className="max-w-2xl text-base text-slate-300">
                   Curate your go-to players, add quick notes, and keep the perfect balance of personalities for every
                   Mafia session.
@@ -107,7 +107,7 @@ const FriendsPage = () => {
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
               <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Add a friend</h2>
+                  <h2 className="text-xl font-semibold text-white">Add a Player</h2>
                   <p className="text-sm text-slate-400">Keep notes so every game starts on the right foot.</p>
                 </div>
                 <button
@@ -115,7 +115,7 @@ const FriendsPage = () => {
                   disabled={saving || !friendName.trim()}
                   className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {saving ? "Saving..." : "Save Friend"}
+                  {saving ? "Saving..." : "Save Player"}
                 </button>
               </header>
               <div className="space-y-4">
@@ -196,19 +196,19 @@ const FriendsPage = () => {
               <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-white">Full roster</h2>
-                  <p className="text-sm text-slate-400">{friends.length} friends</p>
+                  <p className="text-sm text-slate-400">{friends.length} player{friends.length !== 1 ? "s" : ""}</p>
                 </div>
               </header>
 
               {loading && (
                 <p className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 text-center text-sm text-slate-300">
-                  Loading friends...
+                  Loading players...
                 </p>
               )}
 
               {!loading && friends.length === 0 && (
                 <p className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 text-center text-sm text-slate-300">
-                  No friends yet. Add your first ally above.
+                  No players yet. Add your first player above.
                 </p>
               )}
 

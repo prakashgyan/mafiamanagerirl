@@ -44,6 +44,7 @@ class GameDb(Base):
     current_phase = Column(Enum(GamePhase), default=GamePhase.DAY)
     current_round = Column(Integer, default=1)
     winning_team = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=True)
     host = relationship("UserDb")
     players = relationship("PlayerDb", back_populates="game")
     logs = relationship("LogDb", back_populates="game")
