@@ -3,11 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { api, Friend, GameSummary } from "../services/api";
-import BackdropLogo from "../components/BackdropLogo";
 import PlayerAvatar from "../components/PlayerAvatar";
 
+const STAT_CARDS = [
+  { label: "Total Games", icon: "🎲", color: "text-white" },
+  { label: "Active", icon: "⚡", color: "text-emerald-300" },
+  { label: "Finished", icon: "🏁", color: "text-sky-300" },
+  { label: "Friends", icon: "👥", color: "text-violet-300" },
+];
+
 const ProfileHomePage = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [games, setGames] = useState<GameSummary[]>([]);
@@ -39,7 +45,7 @@ const ProfileHomePage = () => {
           setLoading(false);
         }
       }
-  })();
+    })();
 
     return () => {
       isMounted = false;
@@ -50,43 +56,27 @@ const ProfileHomePage = () => {
   const activeGames = useMemo(() => games.filter((game) => game.status === "active"), [games]);
   const ongoingGames = useMemo(() => [...pendingGames, ...activeGames], [pendingGames, activeGames]);
 
-  return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[10%] top-0 h-72 w-72 rounded-full bg-sky-500/15 blur-3xl" />
-        <div className="absolute bottom-0 right-[15%] h-80 w-80 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.14),_transparent_55%)]" />
-      </div>
-      <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
+  const statValues = [
+    games.length,
+    games.filter((g) => g.status === "active").length,
+    games.filter((g) => g.status === "finished").length,
+    friends.length,
+  ];
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:py-16">
-        <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-5">
-              <div className="space-y-3">
-                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Welcome back, {user?.username}</h1>
-                <p className="max-w-2xl text-base text-slate-300">
-                  Keep the intrigue flowing. Manage players, pick up where you left off, and review every twist in
-                  your Mafia nights.
-                </p>
-              </div>
-            </div>
-            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-              <button
-                onClick={() => navigate("/games/new")}
-                className="rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
-              >
-                Create New Game
-              </button>
-              <button
-                onClick={() => logout()}
-                className="rounded-xl border border-slate-700/60 px-5 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-500"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </header>
+  return (
+    <div className="relative min-h-screen text-slate-100">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:py-14">
+
+        {/* Slim welcome hero — no card, just typography */}
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold uppercase tracking-widest text-sky-400">Dashboard</p>
+          <h1 className="text-3xl font-semibold text-white sm:text-4xl">
+            Welcome back, <span className="text-sky-300">{user?.username}</span>
+          </h1>
+          <p className="mt-1 max-w-xl text-sm text-slate-400">
+            Manage players, pick up where you left off, and review every twist in your Mafia nights.
+          </p>
+        </div>
 
         {error && (
           <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200 shadow-lg shadow-rose-500/20">
@@ -94,30 +84,25 @@ const ProfileHomePage = () => {
           </div>
         )}
 
+        {/* Stats row */}
         {!loading && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-5 py-4 text-center shadow-xl shadow-slate-950/50">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Total Games</p>
-              <p className="mt-1 text-2xl font-bold text-white">{games.length}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-5 py-4 text-center shadow-xl shadow-slate-950/50">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Active</p>
-              <p className="mt-1 text-2xl font-bold text-emerald-300">{games.filter((g) => g.status === "active").length}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-5 py-4 text-center shadow-xl shadow-slate-950/50">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Finished</p>
-              <p className="mt-1 text-2xl font-bold text-sky-300">{games.filter((g) => g.status === "finished").length}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-5 py-4 text-center shadow-xl shadow-slate-950/50">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Friends</p>
-              <p className="mt-1 text-2xl font-bold text-violet-300">{friends.length}</p>
-            </div>
+            {STAT_CARDS.map(({ label, icon, color }, i) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-white/10 bg-slate-900/70 px-5 py-4 text-center shadow-xl shadow-slate-950/50 backdrop-blur-sm"
+              >
+                <p className="text-xl" aria-hidden>{icon}</p>
+                <p className={`mt-1 text-2xl font-bold ${color}`}>{statValues[i]}</p>
+                <p className="mt-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+              </div>
+            ))}
           </div>
         )}
 
         <main className="grid gap-8 lg:grid-cols-[1.8fr_1fr]">
           <section className="space-y-8">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur-sm">
               <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-white">Continue Game</h2>
@@ -132,10 +117,13 @@ const ProfileHomePage = () => {
               </header>
               <div className="space-y-4">
                 {ongoingGames.length === 0 && !loading && (
-                  <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 py-8 text-center">
-                    <span className="text-3xl" aria-hidden>🃏</span>
+                  <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 py-10 text-center">
+                    <span className="text-4xl" aria-hidden>🃏</span>
                     <p className="text-sm text-slate-400">No games in progress.</p>
-                    <button onClick={() => navigate("/games/new")} className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400">
+                    <button
+                      onClick={() => navigate("/games/new")}
+                      className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400"
+                    >
                       Start a Game →
                     </button>
                   </div>
@@ -147,11 +135,11 @@ const ProfileHomePage = () => {
                   const badgeStyles = isPending
                     ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
                     : "border-emerald-400/40 bg-emerald-400/10 text-emerald-200";
-                  const hoverBorder = isPending ? "hover:border-sky-400" : "hover:border-emerald-400";
+                  const hoverBorder = isPending ? "hover:border-sky-400/60" : "hover:border-emerald-400/60";
                   const continuePath = isPending ? `/games/${game.id}/assign` : `/games/${game.id}/manage`;
                   const detailText = isPending
                     ? "Awaiting role assignment"
-                    : `${game.current_phase === "day" ? "Day" : "Night"} ${game.current_round}`;
+                    : `${game.current_phase === "day" ? "☀️ Day" : "🌙 Night"} ${game.current_round}`;
 
                   return (
                     <div
@@ -174,7 +162,7 @@ const ProfileHomePage = () => {
                             onClick={() => navigate(continuePath)}
                             className="rounded-lg bg-sky-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-900 shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
                           >
-                            Continue
+                            Continue →
                           </button>
                           <Link
                             to={`/games/${game.id}/public`}
@@ -192,11 +180,13 @@ const ProfileHomePage = () => {
           </section>
 
           <aside className="space-y-8">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur-sm">
               <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-white">Friends</h2>
-                  <p className="text-sm text-slate-400">Track your regular players</p>
+                  <p className="text-sm text-slate-400">
+                    {friends.length > 0 ? `${friends.length} player${friends.length !== 1 ? "s" : ""} saved` : "Track your regular players"}
+                  </p>
                 </div>
                 <Link
                   to="/friends"
@@ -208,19 +198,24 @@ const ProfileHomePage = () => {
               <ul className="space-y-3">
                 {loading && <p className="text-sm text-slate-400">Loading friends…</p>}
                 {friends.slice(0, 6).map((friend) => (
-                  <li key={friend.id} className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+                  <li key={friend.id} className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-3 transition hover:border-slate-600">
                     <PlayerAvatar value={friend.image} fallbackLabel={friend.name} size="sm" />
-                    <div>
-                      <p className="text-sm font-semibold text-white">{friend.name}</p>
-                      {friend.description && <p className="mt-0.5 text-xs text-slate-400">{friend.description}</p>}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{friend.name}</p>
+                      {friend.description && (
+                        <p className="mt-0.5 truncate text-xs text-slate-400">{friend.description}</p>
+                      )}
                     </div>
                   </li>
                 ))}
                 {friends.length === 0 && !loading && (
-                  <li className="text-center py-4 space-y-3">
-                    <p className="text-2xl" aria-hidden>👥</p>
+                  <li className="space-y-3 py-6 text-center">
+                    <p className="text-3xl" aria-hidden>👥</p>
                     <p className="text-sm text-slate-400">No friends added yet.</p>
-                    <Link to="/friends" className="inline-flex items-center gap-1 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400">
+                    <Link
+                      to="/friends"
+                      className="inline-flex items-center gap-1 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400"
+                    >
                       Add Your First Player →
                     </Link>
                   </li>
