@@ -143,5 +143,3 @@ const GameControls = ({
 };
 
 export default GameControls;
-
-export default GameControls;
