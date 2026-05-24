@@ -252,9 +252,6 @@ const ProfileHomePage = () => {
                           <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeStyles}`}>
                             {statusLabel}
                           </span>
-                          {isPending && (
-                            <span className="text-xs text-slate-500">Awaiting role assignment</span>
-                          )}
                           {startedAgo && (
                             <span className="text-xs text-slate-500">Started {startedAgo}</span>
                           )}
