@@ -81,54 +81,17 @@ const AuthPage = () => {
   const isBusy = authSubmitting || demoSubmitting;
 
   return (
-    <div className="flex min-h-screen bg-slate-950">
-      {/* ── Left brand panel ── */}
-      <div className="relative hidden flex-col justify-between overflow-hidden px-12 py-14 lg:flex lg:w-1/2">
-        {/* Ambient glows */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 left-1/4 h-96 w-96 rounded-full bg-sky-500/10 blur-3xl" />
-          <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-emerald-400/8 blur-3xl" />
-        </div>
-
-        {/* Brand badge */}
-        <span className="relative inline-flex w-fit items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
-          MafiaDesk
-        </span>
-
-        {/* Hero copy */}
-        <div className="relative space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-5xl font-semibold leading-tight text-white">
-              Your Mafia game,
-              <br />
-              organized.
-            </h1>
-            <p className="max-w-sm text-base leading-relaxed text-slate-400">
-              Run unforgettable Mafia nights without juggling notes or losing the thread. Keep the
-              tension high and the chaos fun.
-            </p>
-          </div>
-
-          <ul className="space-y-5">
-            {features.map(({ icon, title, description }) => (
-              <li key={title} className="flex items-start gap-4">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10">
-                  {icon}
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-white">{title}</p>
-                  <p className="mt-0.5 text-sm text-slate-400">{description}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="relative text-xs text-slate-600">© 2025 MafiaDesk. All rights reserved.</p>
+    <div className="relative flex min-h-screen overflow-hidden bg-slate-950">
+      {/* ── Shared atmospheric background ── */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-0 h-96 w-[60%] -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="absolute right-0 top-1/3 h-64 w-64 rounded-full bg-sky-400/8 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.10),_transparent_55%)]" />
       </div>
 
-      {/* ── Right form panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-slate-900/60 px-6 py-14 backdrop-blur-sm lg:border-l lg:border-white/5">
+      {/* ── Left: form panel ── */}
+      <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-14 lg:border-r lg:border-white/5">
         {/* Mobile brand badge */}
         <span className="mb-8 inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 lg:hidden">
           MafiaDesk
@@ -232,6 +195,45 @@ const AuthPage = () => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* ── Right: brand panel ── */}
+      <div className="relative hidden flex-col justify-between px-12 py-14 lg:flex lg:w-1/2">
+        {/* Brand badge */}
+        <span className="relative inline-flex w-fit items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+          MafiaDesk
+        </span>
+
+        {/* Hero copy */}
+        <div className="relative space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-5xl font-semibold leading-tight text-white">
+              Your Mafia game,
+              <br />
+              organized.
+            </h1>
+            <p className="max-w-sm text-base leading-relaxed text-slate-400">
+              Run unforgettable Mafia nights without juggling notes or losing the thread. Keep the
+              tension high and the chaos fun.
+            </p>
+          </div>
+
+          <ul className="space-y-5">
+            {features.map(({ icon, title, description }) => (
+              <li key={title} className="flex items-start gap-4">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-500/10">
+                  {icon}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-white">{title}</p>
+                  <p className="mt-0.5 text-sm text-slate-400">{description}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative text-xs text-slate-600">© 2025 MafiaDesk. All rights reserved.</p>
       </div>
     </div>
   );
