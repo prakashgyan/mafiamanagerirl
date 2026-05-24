@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -80,23 +80,41 @@ const AuthPage = () => {
 
   const isBusy = authSubmitting || demoSubmitting;
 
+  const cursorGlowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (cursorGlowRef.current) {
+        cursorGlowRef.current.style.left = `${e.clientX}px`;
+        cursorGlowRef.current.style.top = `${e.clientY}px`;
+      }
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    return () => window.removeEventListener("mousemove", onMouseMove);
+  }, []);
+
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-slate-950">
       {/* ── Shared atmospheric background ── */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-0 h-96 w-[60%] -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
+        {/* Cursor-tracking glow */}
+        <div
+          ref={cursorGlowRef}
+          className="absolute h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-500/10 blur-3xl transition-[left,top] duration-500 ease-out"
+          style={{ left: "50%", top: "40%" }}
+        />
         <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="absolute right-0 top-1/3 h-64 w-64 rounded-full bg-sky-400/8 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.10),_transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.08),_transparent_55%)]" />
       </div>
 
       {/* ── Left: form panel ── */}
-      <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-14 lg:border-r lg:border-white/5">
-        {/* Mobile brand badge */}
-        <span className="mb-8 inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 lg:hidden">
+      <div className="relative flex flex-1 flex-col justify-between px-6 py-14 lg:w-1/2">
+        {/* Brand badge — top left */}
+        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
           MafiaDesk
         </span>
 
+        {/* Centered form */}
+        <div className="flex flex-1 flex-col items-center justify-center">
         <div className="w-full max-w-sm">
           <div className="mb-8 space-y-1">
             <h2 className="text-2xl font-semibold text-white">
@@ -195,14 +213,14 @@ const AuthPage = () => {
             </p>
           </div>
         </div>
+        </div>
+
+        {/* Copyright — bottom left */}
+        <p className="text-xs text-slate-600">© 2026 MafiaDesk. All rights reserved.</p>
       </div>
 
       {/* ── Right: brand panel ── */}
-      <div className="relative hidden flex-col justify-between px-12 py-14 lg:flex lg:w-1/2">
-        {/* Brand badge */}
-        <span className="relative inline-flex w-fit items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
-          MafiaDesk
-        </span>
+      <div className="relative hidden flex-col justify-center px-12 py-14 lg:flex lg:w-1/2">
 
         {/* Hero copy */}
         <div className="relative space-y-8">
@@ -233,7 +251,6 @@ const AuthPage = () => {
           </ul>
         </div>
 
-        <p className="relative text-xs text-slate-600">© 2025 MafiaDesk. All rights reserved.</p>
       </div>
     </div>
   );
