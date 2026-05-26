@@ -9,6 +9,7 @@ import { cn } from "../utils/cn";
 import TypewriterText from "../components/TypewriterText";
 import { Stars, Sun, Moon, Clouds, FloatingParticles } from "../components/publicview/AnimatedBackground";
 import ANIMATION_CONSTANTS from "../constants/animationConstants";
+import { getErrorMessage } from "../utils/errorMessage";
 
 const PublicViewPage = () => {
   const { gameId } = useParams();
@@ -22,7 +23,7 @@ const PublicViewPage = () => {
         const data = await api.getPublicGame(gameId);
         setGame(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load game");
+        setError(getErrorMessage(err, "Failed to load game"));
       }
     })();
   }, [gameId]);
@@ -206,7 +207,7 @@ const PublicViewPage = () => {
                     const data = await api.getPublicGame(gameId);
                     setGame(data);
                   } catch (err) {
-                    setError(err instanceof Error ? err.message : "Failed to load game");
+                    setError(getErrorMessage(err, "Failed to load game"));
                   }
                 })();
               }

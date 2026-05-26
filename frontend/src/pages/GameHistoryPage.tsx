@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { api, GameStatus, GameSummary } from "../services/api";
 import Spinner from "../components/Spinner";
-
-const statusLabels: Record<GameStatus, { label: string; accent: string }> = {
-  pending: { label: "Setup", accent: "text-amber-200 border-amber-400/40 bg-amber-400/10" },
-  active: { label: "Active", accent: "text-emerald-200 border-emerald-400/40 bg-emerald-400/10" },
-  finished: { label: "Finished", accent: "text-slate-200 border-slate-400/40 bg-slate-400/10" },
-};
+import EmptyState from "../components/EmptyState";
+import GameStatusBadge, { GAME_STATUS_META } from "../components/GameStatusBadge";
+import { getErrorMessage } from "../utils/errorMessage";
 
 const phaseIcon: Record<string, string> = { day: "☀️", night: "🌙" };
 
@@ -16,9 +13,9 @@ type StatusFilter = GameStatus | "all";
 
 const filterOptions: { id: StatusFilter; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "pending", label: "Setup" },
-  { id: "active", label: "Active" },
-  { id: "finished", label: "Finished" },
+  { id: "pending", label: GAME_STATUS_META.pending.label },
+  { id: "active", label: GAME_STATUS_META.active.label },
+  { id: "finished", label: GAME_STATUS_META.finished.label },
 ];
 
 const formatDate = (iso?: string | null) => {
@@ -49,7 +46,7 @@ const GameHistoryPage = () => {
         const games = await api.listGames();
         setAllGames(games);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load game history");
+        setError(getErrorMessage(err, "Failed to load game history"));
       } finally {
         setLoading(false);
       }
@@ -86,13 +83,7 @@ const GameHistoryPage = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[5%] top-0 h-80 w-80 rounded-full bg-sky-500/15 blur-3xl" />
-        <div className="absolute bottom-0 right-[10%] h-96 w-96 rounded-full bg-emerald-400/12 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_58%)]" />
-      </div>
-
+    <div className="relative min-h-screen text-slate-100">
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-10 lg:py-14">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1">
@@ -157,28 +148,30 @@ const GameHistoryPage = () => {
           )}
 
           {!loading && !error && filteredGames.length === 0 && (
-            <div className="flex flex-col items-center gap-4 rounded-3xl border border-slate-800 bg-slate-900/70 p-12 text-center">
-              <span className="text-5xl" aria-hidden>🎲</span>
-              <p className="text-base font-semibold text-slate-200">No games here yet</p>
-              <p className="text-sm text-slate-400">
-                {statusFilter === "all"
+            <EmptyState
+              icon="🎲"
+              title="No games here yet"
+              message={
+                statusFilter === "all"
                   ? "You haven't run any Mafia sessions. Start your first game!"
-                  : `No ${statusFilter} games found. Try a different filter.`}
-              </p>
-              {statusFilter === "all" && (
-                <button
-                  onClick={() => navigate("/games/new")}
-                  className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-sky-400"
-                >
-                  Create New Game →
-                </button>
-              )}
-            </div>
+                  : `No ${statusFilter} games found. Try a different filter.`
+              }
+              action={
+                statusFilter === "all" ? (
+                  <button
+                    onClick={() => navigate("/games/new")}
+                    className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-sky-400"
+                  >
+                    Create New Game →
+                  </button>
+                ) : undefined
+              }
+              className="rounded-3xl border-slate-800 bg-slate-900/70 p-12"
+            />
           )}
 
           <div className="grid gap-5 lg:grid-cols-2">
             {filteredGames.map((game) => {
-              const statusInfo = statusLabels[game.status];
               const date = formatDate(game.created_at);
               return (
                 <div
@@ -198,11 +191,7 @@ const GameHistoryPage = () => {
                         </h3>
                         {date && <p className="mt-1 text-xs text-slate-500">{date}</p>}
                       </div>
-                      <span
-                        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusInfo.accent}`}
-                      >
-                        {statusInfo.label}
-                      </span>
+                      <GameStatusBadge status={game.status} className="shrink-0 px-3 py-1 text-xs" />
                     </div>
 
                     <div className="mt-4 space-y-1.5 text-sm text-slate-300">

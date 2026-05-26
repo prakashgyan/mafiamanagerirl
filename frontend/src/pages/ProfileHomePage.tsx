@@ -4,6 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api, Friend, GameSummary, LeaderboardEntry } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
+import EmptyState from "../components/EmptyState";
+import GameStatusBadge from "../components/GameStatusBadge";
+import { getErrorMessage } from "../utils/errorMessage";
 
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up">
@@ -48,7 +51,7 @@ const ProfileHomePage = () => {
         setLeaderboard(leaderboardData);
       } catch (err) {
         if (!isMounted) return;
-        setError(err instanceof Error ? err.message : "Unable to load profile data");
+        setError(getErrorMessage(err, "Unable to load profile data"));
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -163,10 +166,10 @@ const ProfileHomePage = () => {
               )}
             </header>
             {leaderboard.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 py-10 text-center">
-                <span className="text-4xl" aria-hidden>🏆</span>
-                <p className="text-sm text-slate-400">No wins recorded yet. Finish some games to see the leaderboard.</p>
-              </div>
+              <EmptyState
+                icon="🏆"
+                message="No wins recorded yet. Finish some games to see the leaderboard."
+              />
             ) : (
               <ol className="space-y-2">
                 {(leaderboardExpanded ? leaderboard : leaderboard.slice(0, 5)).map((entry, index) => {
@@ -219,23 +222,21 @@ const ProfileHomePage = () => {
               <div className="space-y-4">
                 {loading && <p className="text-sm text-slate-400">Loading games…</p>}
                 {ongoingGames.length === 0 && !loading && (
-                  <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 py-10 text-center">
-                    <span className="text-4xl" aria-hidden>🃏</span>
-                    <p className="text-sm text-slate-400">No games in progress.</p>
-                    <button
-                      onClick={() => navigate("/games/new")}
-                      className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400"
-                    >
-                      Start a Game →
-                    </button>
-                  </div>
+                  <EmptyState
+                    icon="🃏"
+                    message="No games in progress."
+                    action={
+                      <button
+                        onClick={() => navigate("/games/new")}
+                        className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400"
+                      >
+                        Start a Game →
+                      </button>
+                    }
+                  />
                 )}
                 {ongoingGames.map((game) => {
                   const isPending = game.status === "pending";
-                  const statusLabel = isPending ? "Pending" : "Active";
-                  const badgeStyles = isPending
-                    ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
-                    : "border-emerald-400/40 bg-emerald-400/10 text-emerald-200";
                   const hoverBorder = isPending ? "hover:border-sky-400/60" : "hover:border-emerald-400/60";
                   const resumePath = isPending ? `/games/${game.id}/assign` : `/games/${game.id}/manage`;
                   const publicUrl = `${window.location.origin}/games/${game.id}/public`;
@@ -273,9 +274,7 @@ const ProfileHomePage = () => {
                               </svg>
                             </span>
                           </button>
-                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeStyles}`}>
-                            {statusLabel}
-                          </span>
+                          <GameStatusBadge status={game.status} className="px-3 py-1 text-xs" />
                           {startedAgo && (
                             <span className="text-xs text-slate-500">Started {startedAgo}</span>
                           )}
@@ -339,15 +338,20 @@ const ProfileHomePage = () => {
                   </li>
                 ))}
                 {friends.length === 0 && !loading && (
-                  <li className="space-y-3 py-6 text-center">
-                    <p className="text-3xl" aria-hidden>👥</p>
-                    <p className="text-sm text-slate-400">No players added yet.</p>
-                    <Link
-                      to="/friends"
-                      className="inline-flex items-center gap-1 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400"
-                    >
-                      Add Players →
-                    </Link>
+                  <li>
+                    <EmptyState
+                      icon="👥"
+                      message="No players added yet."
+                      action={
+                        <Link
+                          to="/friends"
+                          className="inline-flex items-center gap-1 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-sky-400"
+                        >
+                          Add Players →
+                        </Link>
+                      }
+                      className="py-6"
+                    />
                   </li>
                 )}
               </ul>

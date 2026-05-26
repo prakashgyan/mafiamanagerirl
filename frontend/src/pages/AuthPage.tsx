@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import logoImage from "../assets/logo.png";
 import BlobBackground from "../components/BlobBackground";
 import { useAuth } from "../context/AuthContext";
+import { getErrorMessage } from "../utils/errorMessage";
 
 const features = [
   {
@@ -61,7 +62,7 @@ const AuthPage = () => {
       }
       navigate("/profile", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to authenticate");
+      setError(getErrorMessage(err, "Failed to authenticate"));
     } finally {
       setAuthSubmitting(false);
     }
@@ -74,7 +75,7 @@ const AuthPage = () => {
       await loginAsDemo();
       navigate("/profile", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start demo session");
+      setError(getErrorMessage(err, "Failed to start demo session"));
     } finally {
       setDemoSubmitting(false);
     }

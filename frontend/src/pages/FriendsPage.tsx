@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 
 import { api, Friend } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
+import EmptyState from "../components/EmptyState";
 import { FRIEND_AVATAR_OPTIONS, getRandomFriendAvatar, normalizeAvatar } from "../utils/avatarOptions";
+import { getErrorMessage } from "../utils/errorMessage";
 
 const ANIMAL_COUNT = 20; // first 20 in FRIEND_AVATAR_OPTIONS are animals
 const animalAvatars = FRIEND_AVATAR_OPTIONS.slice(0, ANIMAL_COUNT);
@@ -28,7 +30,7 @@ const FriendsPage = () => {
         const friendList = await api.listFriends();
         setFriends(friendList);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load friends");
+        setError(getErrorMessage(err, "Failed to load friends"));
       } finally {
         setLoading(false);
       }
@@ -73,7 +75,7 @@ const FriendsPage = () => {
       setSuccess(`${created.name} added to your roster`);
       resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add friend");
+      setError(getErrorMessage(err, "Failed to add friend"));
     } finally {
       setSaving(false);
     }
@@ -94,20 +96,14 @@ const FriendsPage = () => {
       await api.deleteFriend(friendId);
       setFriends((prev) => prev.filter((friend) => friend.id !== friendId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete friend");
+      setError(getErrorMessage(err, "Failed to delete friend"));
     } finally {
       setDeletingId(null);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[12%] top-0 h-80 w-80 rounded-full bg-sky-500/15 blur-3xl" />
-        <div className="absolute bottom-0 right-[18%] h-96 w-96 rounded-full bg-emerald-400/12 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_58%)]" />
-      </div>
-
+    <div className="relative min-h-screen text-slate-100">
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-10 lg:py-14">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1">
@@ -272,11 +268,11 @@ const FriendsPage = () => {
             )}
 
             {!loading && friends.length === 0 && (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-8 text-center">
-                <span className="text-4xl" aria-hidden>🎭</span>
-                <p className="text-sm font-semibold text-slate-200">No players yet</p>
-                <p className="text-xs text-slate-400">Add your first player using the form above.</p>
-              </div>
+              <EmptyState
+                icon="🎭"
+                title="No players yet"
+                message="Add your first player using the form above."
+              />
             )}
 
             {!loading && friends.length > 0 && visibleFriends.length === 0 && (

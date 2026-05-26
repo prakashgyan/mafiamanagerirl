@@ -107,7 +107,7 @@ export const getPlayerCardClasses = (player: Player, variant: VisualVariant = "d
 
 export const getRoleLabelClass = (player: Player, variant: VisualVariant = "dark"): string => {
   if (!player.is_alive) {
-    return variant === "light" ? "text-slate-400" : "text-slate-400";
+    return "text-slate-400";
   }
 
   return variant === "light" ? "text-slate-700" : "text-current";

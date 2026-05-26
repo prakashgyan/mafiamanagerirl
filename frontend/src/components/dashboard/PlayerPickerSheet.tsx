@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Player } from "../../services/api";
 import PlayerAvatar from "../PlayerAvatar";
+import { useModalFocusTrap } from "../../hooks/useModalFocusTrap";
 
 type PlayerPickerSheetProps = {
   label: string;
@@ -12,31 +13,7 @@ type PlayerPickerSheetProps = {
 
 const PlayerPickerSheet = ({ label, icon, players, onSelect, onClose }: PlayerPickerSheetProps) => {
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const focusable = dialog.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    focusable[0]?.focus();
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    const trap = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { onClose(); return; }
-      if (e.key !== "Tab") return;
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
-      }
-    };
-
-    document.addEventListener("keydown", trap);
-    return () => document.removeEventListener("keydown", trap);
-  }, [onClose]);
+  useModalFocusTrap(dialogRef, onClose);
 
   return (
     <>

@@ -1,3 +1,4 @@
+import { Component, ErrorInfo, ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
@@ -12,6 +13,36 @@ import ProfileHomePage from "./pages/ProfileHomePage";
 import PublicViewPage from "./pages/PublicViewPage";
 import FriendsPage from "./pages/FriendsPage";
 import NavBar from "./components/NavBar";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Unhandled render error:", error, info);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-slate-100">
+          <p className="text-2xl font-semibold text-rose-300">Something went wrong</p>
+          <p className="text-sm text-slate-400">{(this.state.error as Error).message}</p>
+          <button
+            onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+            className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-sky-400"
+          >
+            Reload page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -108,3 +139,5 @@ const App = () => {
 };
 
 export default App;
+
+export { ErrorBoundary };

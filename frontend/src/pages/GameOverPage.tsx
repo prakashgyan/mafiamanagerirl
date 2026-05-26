@@ -7,6 +7,7 @@ import { api, GameDetail } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
 import Spinner from "../components/Spinner";
 import { RoleBadge } from "../components/RoleBadge";
+import { getErrorMessage } from "../utils/errorMessage";
 
 const GameOverPage = () => {
   const { gameId } = useParams();
@@ -30,7 +31,7 @@ const GameOverPage = () => {
           });
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load game");
+        setError(getErrorMessage(err, "Failed to load game"));
       }
     })();
   }, [gameId]);
@@ -57,11 +58,13 @@ const GameOverPage = () => {
   const sortedPlayers = [...alivePlayers, ...eliminatedPlayers];
 
   const winner = game.winning_team?.trim() ?? null;
-  const winnerLower = winner?.toLowerCase() ?? "";
 
-  const isMafia = winnerLower.includes("mafia");
-  const isTown = winnerLower.includes("villager") || winnerLower.includes("town");
-  const isJester = winnerLower.includes("jester");
+  const matchesTeam = (team: string | null, ...keywords: string[]) =>
+    keywords.some((kw) => team?.toLowerCase().includes(kw));
+
+  const isMafia = matchesTeam(winner, "mafia");
+  const isTown = matchesTeam(winner, "villager", "town");
+  const isJester = matchesTeam(winner, "jester");
 
   const winnerPalette = isMafia
     ? {

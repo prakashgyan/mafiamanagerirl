@@ -97,15 +97,12 @@ export const setUnauthorizedHandler = (handler: () => void): void => {
   unauthorizedHandler = handler;
 };
 
+import { stripTrailingSlash, isLocalOrigin } from "../utils/urlResolution";
+
 const API_FALLBACKS = {
   development: "http://localhost:8000",
   production: "https://backend.mafiadesk.com",
 } as const;
-
-const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
-
-const isLocalHost = (origin: string) =>
-  origin.includes("localhost") || origin.includes("127.0.0.1");
 
 const resolveApiBase = () => {
   const fromEnv = import.meta.env.VITE_API_BASE?.trim();
@@ -119,7 +116,7 @@ const resolveApiBase = () => {
 
   if (typeof window !== "undefined") {
     const origin = window.location.origin.toLowerCase();
-    if (isLocalHost(origin)) {
+    if (isLocalOrigin(origin)) {
       return stripTrailingSlash(API_FALLBACKS.development);
     }
 

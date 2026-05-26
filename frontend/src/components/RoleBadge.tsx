@@ -1,18 +1,4 @@
-const ROLE_BADGE_CLASSES: Record<string, string> = {
-  mafia: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
-  detective: "bg-violet-500/20 text-violet-300 border border-violet-500/40",
-  doctor: "bg-sky-500/20 text-sky-300 border border-sky-500/40",
-  villager: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
-  jester: "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40",
-};
-
-const ROLE_ICONS: Record<string, string> = {
-  mafia: "🔪",
-  detective: "🔍",
-  doctor: "💉",
-  villager: "🌾",
-  jester: "🃏",
-};
+import { ROLE_BADGE_CLASSES, ROLE_ICONS } from "../constants/roles";
 
 interface RoleBadgeProps {
   role: string | null | undefined;

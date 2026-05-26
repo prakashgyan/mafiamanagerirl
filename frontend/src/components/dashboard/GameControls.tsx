@@ -1,4 +1,5 @@
 import { GamePhase, User } from "../../services/api";
+import { SpinnerIcon } from "../Spinner";
 
 type Palette = {
   primaryButton: string;
@@ -17,22 +18,6 @@ type GameControlsProps = {
   onSyncNightEvents: () => void;
 };
 
-const Spinner = () => (
-  <svg
-    className="h-4 w-4 animate-spin"
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    aria-hidden
-  >
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-    />
-  </svg>
-);
 
 const GameControls = ({
   isDay,
@@ -65,10 +50,7 @@ const GameControls = ({
           >
             {updatingPublicPreference ? (
               <span className="absolute inset-0 flex items-center justify-center">
-                <svg className="h-3 w-3 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden>
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <SpinnerIcon className="h-3 w-3" />
               </span>
             ) : (
               <span
@@ -98,7 +80,7 @@ const GameControls = ({
                 processingQueuedActions ? "cursor-not-allowed opacity-80" : ""
               }`}
             >
-              {processingQueuedActions && <Spinner />}
+              {processingQueuedActions && <SpinnerIcon />}
               {processingQueuedActions ? "Resolving…" : `End ${isDay ? "Day" : "Night"}`}
             </button>
             {!instantPublicUpdates && (

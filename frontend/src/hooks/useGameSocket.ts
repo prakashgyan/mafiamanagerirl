@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GamePhase, GameStatus, LogEntry, Player } from "../services/api";
+import { stripTrailingSlash, isLocalOrigin } from "../utils/urlResolution";
 
 export type GameSocketMessage = {
   event: string;
@@ -60,11 +61,6 @@ const WS_FALLBACKS = {
   development: "ws://localhost:8000",
   production: "wss://backend.mafiadesk.com",
 } as const;
-
-const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
-
-const isLocalOrigin = (origin: string) =>
-  origin.includes("localhost") || origin.includes("127.0.0.1");
 
 const inferWebSocketFromHttp = (maybeHttpBase: string) => {
   try {

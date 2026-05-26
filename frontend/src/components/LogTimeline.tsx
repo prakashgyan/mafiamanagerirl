@@ -59,6 +59,8 @@ const CHIP_ELIMINATED_STYLE = {
   text: "text-slate-400",
 };
 
+const PHASE_SWITCH_REGEX = /phase\s+switched/i;
+
 type LogGroup = {
   phase: LogEntry["phase"];
   round: number;
@@ -174,7 +176,7 @@ const LogsSection = ({
     );
 
     const relevantLogs = filterPhaseSwitch
-      ? orderedLogs.filter((log) => !/phase\s+switched/i.test(log.message))
+      ? orderedLogs.filter((log) => !PHASE_SWITCH_REGEX.test(log.message))
       : orderedLogs;
 
     const groups: LogGroup[] = [];
