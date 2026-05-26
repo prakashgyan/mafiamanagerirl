@@ -173,7 +173,7 @@ export const FloatingParticles = ({ isDay }: PhaseProps) => {
         <div
           key={particle.id}
           className={cn(
-            "absolute animate-bounce rounded-full blur-sm",
+            "absolute animate-float rounded-full blur-sm",
             ANIMATION_CONSTANTS.PHASE_TRANSITION_CSS,
             isDay ? "bg-yellow-200" : "bg-blue-200"
           )}
