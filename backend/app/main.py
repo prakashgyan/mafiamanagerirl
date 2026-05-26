@@ -17,7 +17,7 @@ from .config import get_settings
 from .database import get_datastore, init_db, get_db
 from .logging_utils import configure_logging
 from .router_registry import include_routers
-from .services.game_service import GameService
+from .services.game_service import GameService, register_event_loop
 from .socket_manager import manager
 
 configure_logging()
@@ -30,6 +30,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    register_event_loop(asyncio.get_running_loop())
     logger.info("Initialising database…")
     t0 = asyncio.get_event_loop().time()
     await asyncio.to_thread(init_db)

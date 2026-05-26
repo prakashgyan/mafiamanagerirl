@@ -4,6 +4,16 @@ import asyncio
 import random
 from typing import Callable, Optional
 
+# Uvicorn's event loop, captured at startup via register_event_loop().
+# asyncio.get_event_loop() called from a sync threadpool in Python 3.10+ returns
+# a new, non-running loop — so run_coroutine_threadsafe would silently no-op.
+_app_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+def register_event_loop(loop: asyncio.AbstractEventLoop) -> None:
+    global _app_loop
+    _app_loop = loop
+
 from fastapi import HTTPException, status
 from loguru import logger
 
@@ -154,7 +164,10 @@ class GameManager:
         message = self.serialize_for_broadcast(event, payload)
         logger.bind(game_id=self.id, event=event).debug("Broadcasting game state update")
         try:
-            loop = asyncio.get_event_loop()
+            loop = _app_loop
+            if loop is None or not loop.is_running():
+                logger.warning("No running event loop available for broadcast (game {})", self.id)
+                return
             asyncio.run_coroutine_threadsafe(manager.broadcast(self.id, message), loop)
         except Exception:
             logger.exception("Failed to broadcast game state for game {}", self.id)
