@@ -22,6 +22,7 @@ type DayPhasePanelProps = {
   onNoteChange: (value: string) => void;
   palette: Palette;
   isMobile?: boolean;
+  onTapVoteZone?: () => void;
 };
 
 const DayPhasePanel = ({
@@ -34,6 +35,7 @@ const DayPhasePanel = ({
   onNoteChange,
   palette,
   isMobile,
+  onTapVoteZone,
 }: DayPhasePanelProps) => {
   const voteEligibleIds = new Set(alivePlayers.map((p) => p.id));
 
@@ -56,7 +58,7 @@ const DayPhasePanel = ({
     "flex flex-col gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm transition-colors duration-200 shadow-sm shadow-black/30";
   const stateClasses =
     isOver && canDrop ? palette.hoverBorder : selectedPlayer ? palette.readyBorder : palette.idleBorder;
-  const placeholder = alivePlayers.length === 0 ? "No eligible players" : isMobile ? "Tap a player in the Roster tab" : "Drag a player here";
+  const placeholder = alivePlayers.length === 0 ? "No eligible players" : isMobile ? "Tap to choose a player" : "Drag a player here";
 
   return (
     <section className="space-y-6 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
@@ -64,7 +66,7 @@ const DayPhasePanel = ({
         <h2 className="text-lg font-semibold text-white">Vote Phase</h2>
         <p className="text-xs uppercase tracking-wide text-slate-400">
           {isMobile
-            ? "Tap a player in the Roster tab to nominate them. The elimination happens when you end the day."
+            ? "Tap the vote zone to pick a player to nominate. The elimination happens when you end the day."
             : "Drag an eligible player into the vote zone. The elimination happens when you end the day."}
         </p>
       </div>
@@ -83,33 +85,45 @@ const DayPhasePanel = ({
           )}
         </div>
         {selectedPlayer ? (
-          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
+          <button
+            type="button"
+            onClick={isMobile && onTapVoteZone ? onTapVoteZone : undefined}
+            className={`flex w-full items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 ${isMobile && onTapVoteZone ? "active:opacity-70" : ""}`}
+          >
             <PlayerAvatar value={selectedPlayer.avatar} fallbackLabel={selectedPlayer.name} size="sm" />
-            <div className="flex flex-col">
+            <div className="flex flex-col text-left">
               <span className="font-semibold">{selectedPlayer.name}</span>
               <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">
                 {selectedPlayer.role ?? "Unassigned"}
               </span>
             </div>
-          </div>
+            {isMobile && onTapVoteZone && (
+              <span className="ml-auto text-xs text-slate-500">change</span>
+            )}
+          </button>
         ) : (
-          <div className="flex flex-col items-center gap-2 py-2 text-center">
-            <span className="text-2xl" aria-hidden>{isMobile ? "👆" : "👆"}</span>
+          <button
+            type="button"
+            disabled={alivePlayers.length === 0}
+            onClick={isMobile && onTapVoteZone && alivePlayers.length > 0 ? onTapVoteZone : undefined}
+            className={`flex w-full flex-col items-center gap-2 py-2 text-center ${isMobile && onTapVoteZone && alivePlayers.length > 0 ? "active:opacity-70" : "cursor-default"}`}
+          >
+            <span className="text-2xl" aria-hidden>👆</span>
             <p className="text-sm font-medium text-slate-300">
               {alivePlayers.length === 0
                 ? "No eligible players"
                 : isMobile
-                ? "Go to the Roster tab and tap a player"
+                ? "Tap to choose a player"
                 : "Drag a player here to nominate them"}
             </p>
             <p className="text-xs text-slate-500">
               {alivePlayers.length === 0
                 ? "No players currently meet the requirements."
                 : isMobile
-                ? "They'll appear here once selected."
+                ? "Opens player selection"
                 : "Grab a player card from the roster on the right →"}
             </p>
-          </div>
+          </button>
         )}
       </div>
 

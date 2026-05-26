@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logoImage from "../assets/logo.png";
 
@@ -11,7 +11,6 @@ const MENU_ITEMS = [
 
 const NavBar = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -38,15 +37,8 @@ const NavBar = () => {
 
         <div className="flex flex-1" />
 
-        {/* Right side: New Game + Avatar */}
+        {/* Right side: Avatar */}
         <div className="flex shrink-0 items-center gap-3">
-          <button
-            onClick={() => navigate("/games/new")}
-            className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-900 shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
-          >
-            + New Game
-          </button>
-
           {/* Avatar button */}
           <div className="relative" ref={menuRef}>
             <button

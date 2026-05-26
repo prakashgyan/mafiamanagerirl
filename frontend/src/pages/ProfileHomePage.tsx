@@ -101,35 +101,46 @@ const ProfileHomePage = () => {
 
         {/* Stats row */}
         {!loading && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between">
-            {/* Games group */}
-            <div className="flex divide-x divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-slate-900/70 shadow-lg shadow-slate-950/50 backdrop-blur-sm">
-              {statCards.slice(0, 3).map(({ label, value, color }) => (
-                <div key={label} className="flex items-center justify-between gap-4 px-5 py-3">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-                  <p className={`text-lg font-bold ${color}`}>{value}</p>
-                </div>
-              ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Stat pills — left aligned */}
+            <div className="flex flex-wrap items-stretch gap-3">
+              {/* Games group */}
+              <div className="flex divide-x divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-slate-900/70 shadow-lg shadow-slate-950/50 backdrop-blur-sm">
+                {statCards.slice(0, 3).map(({ label, value, color }) => (
+                  <div key={label} className="flex items-center justify-between gap-4 px-5 py-3">
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                    <p className={`text-lg font-bold ${color}`}>{value}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Players card */}
+              {(() => {
+                const { label, value, color } = statCards[3];
+                const isEmpty = value === 0;
+                return (
+                  <div className={`flex items-center gap-5 rounded-xl border px-5 py-3 shadow-lg shadow-slate-950/50 backdrop-blur-sm ${isEmpty ? "border-dashed border-slate-700 bg-slate-950/40" : "border-white/10 bg-slate-900/70"}`}>
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                    <p className={`text-lg font-bold ${color}`}>{value}</p>
+                    {isEmpty && (
+                      <Link
+                        to="/friends"
+                        className="rounded-lg bg-violet-500/20 px-2 py-1 text-[0.6rem] font-semibold uppercase tracking-wide text-violet-300 hover:bg-violet-500/30"
+                      >
+                        Add →
+                      </Link>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
-            {/* Players card */}
-            {(() => {
-              const { label, value, color } = statCards[3];
-              const isEmpty = value === 0;
-              return (
-                <div className={`flex items-center gap-5 rounded-xl border px-5 py-3 shadow-lg shadow-slate-950/50 backdrop-blur-sm ${isEmpty ? "border-dashed border-slate-700 bg-slate-950/40" : "border-white/10 bg-slate-900/70"}`}>
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-                  <p className={`text-lg font-bold ${color}`}>{value}</p>
-                  {isEmpty && (
-                    <Link
-                      to="/friends"
-                      className="rounded-lg bg-violet-500/20 px-2 py-1 text-[0.6rem] font-semibold uppercase tracking-wide text-violet-300 hover:bg-violet-500/30"
-                    >
-                      Add →
-                    </Link>
-                  )}
-                </div>
-              );
-            })()}
+
+            {/* New Game — right aligned */}
+            <button
+              onClick={() => navigate("/games/new")}
+              className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-500/30 transition hover:bg-sky-400 active:scale-95"
+            >
+              + New Game
+            </button>
           </div>
         )}
 
@@ -247,10 +258,10 @@ const ProfileHomePage = () => {
                         <div className="flex flex-wrap items-center gap-3">
                           <button
                             type="button"
-                            title="Click to copy public link"
+                            title="Click to copy game ID"
                             onClick={() => {
-                              void navigator.clipboard.writeText(publicUrl).then(() =>
-                                showToast(`Copied link for game #${game.id}`)
+                              void navigator.clipboard.writeText(game.id).then(() =>
+                                showToast(`Copied game ID: ${game.id}`)
                               );
                             }}
                             className="group flex items-center gap-1.5 text-base font-medium text-white transition hover:text-sky-300"

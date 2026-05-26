@@ -27,6 +27,7 @@ type DropZoneProps = {
   isMobile?: boolean;
   onDrop: (playerId: number) => void;
   onClear: () => void;
+  onTapZone?: () => void;
 };
 
 const NightDropZone = ({
@@ -42,6 +43,7 @@ const NightDropZone = ({
   isMobile,
   onDrop,
   onClear,
+  onTapZone,
 }: DropZoneProps) => {
   const eligibleIds = new Set(allowedPlayers.map((p) => p.id));
 
@@ -74,7 +76,7 @@ const NightDropZone = ({
     : allowedPlayers.length === 0
     ? "No eligible players"
     : isMobile
-    ? "Tap a player in the Roster tab"
+    ? "Tap to choose a player"
     : "Drag a player here";
 
   return (
@@ -92,25 +94,37 @@ const NightDropZone = ({
         )}
       </div>
       {selectedPlayer && isEnabled ? (
-        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100">
+        <button
+          type="button"
+          onClick={isMobile && onTapZone ? onTapZone : undefined}
+          className={`flex w-full items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 ${isMobile && onTapZone ? "active:opacity-70" : ""}`}
+        >
           <PlayerAvatar value={selectedPlayer.avatar} fallbackLabel={selectedPlayer.name} size="sm" />
-          <div className="flex flex-col">
+          <div className="flex flex-col text-left">
             <span className="font-semibold">{selectedPlayer.name}</span>
             <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">
               {selectedPlayer.role ?? "Unassigned"}
             </span>
           </div>
-        </div>
+          {isMobile && onTapZone && (
+            <span className="ml-auto text-xs text-slate-500">change</span>
+          )}
+        </button>
       ) : (
-        <div className="flex flex-col items-center gap-1 py-1 text-center">
-          {isEnabled && allowedPlayers.length > 0 && <span className="text-xl" aria-hidden>👆</span>}
+        <button
+          type="button"
+          disabled={!isEnabled || allowedPlayers.length === 0}
+          onClick={isMobile && onTapZone && isEnabled && allowedPlayers.length > 0 ? onTapZone : undefined}
+          className={`flex w-full flex-col items-center gap-1 py-1 text-center ${isMobile && onTapZone && isEnabled && allowedPlayers.length > 0 ? "active:opacity-70" : "cursor-default"}`}
+        >
+          {isEnabled && allowedPlayers.length > 0 && <span className="text-xl" aria-hidden>{isMobile ? "👆" : "👆"}</span>}
           <p className="text-sm text-slate-400">{placeholder}</p>
           {isEnabled && allowedPlayers.length > 0 && (
             <p className="text-xs text-slate-500">
-              {isMobile ? "Go to the Roster tab and tap a player." : "Grab a player card from the roster →"}
+              {isMobile ? "Opens player selection" : "Grab a player card from the roster →"}
             </p>
           )}
-        </div>
+        </button>
       )}
       {isEnabled && action === "kill" && plannedSaveId && plannedSaveId === plannedKillId && (
         <p className="text-xs font-semibold text-amber-300">
@@ -135,6 +149,9 @@ type NightPhasePanelProps = {
   onNoteChange: (value: string) => void;
   palette: Palette;
   isMobile?: boolean;
+  onTapKillZone?: () => void;
+  onTapSaveZone?: () => void;
+  onTapInvestigateZone?: () => void;
 };
 
 const NightPhasePanel = ({
@@ -151,6 +168,9 @@ const NightPhasePanel = ({
   onNoteChange,
   palette,
   isMobile,
+  onTapKillZone,
+  onTapSaveZone,
+  onTapInvestigateZone,
 }: NightPhasePanelProps) => {
   const killTargetPlayer = alivePlayers.find((p) => p.id === plannedNightActions.kill);
   const saveTargetPlayer = alivePlayers.find((p) => p.id === plannedNightActions.save);
@@ -180,6 +200,7 @@ const NightPhasePanel = ({
           isMobile={isMobile}
           onDrop={(id) => onPlanAction("kill", id)}
           onClear={() => onClearAction("kill")}
+          onTapZone={onTapKillZone}
         />
         <NightDropZone
           action="save"
@@ -192,6 +213,7 @@ const NightPhasePanel = ({
           isMobile={isMobile}
           onDrop={(id) => onPlanAction("save", id)}
           onClear={() => onClearAction("save")}
+          onTapZone={onTapSaveZone}
         />
         <NightDropZone
           action="investigate"
@@ -204,6 +226,7 @@ const NightPhasePanel = ({
           isMobile={isMobile}
           onDrop={(id) => onPlanAction("investigate", id)}
           onClear={() => onClearAction("investigate")}
+          onTapZone={onTapInvestigateZone}
         />
       </div>
 

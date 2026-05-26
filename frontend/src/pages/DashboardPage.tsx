@@ -11,6 +11,7 @@ import NightPhasePanel from "../components/dashboard/NightPhasePanel";
 import PlayerRoster from "../components/dashboard/PlayerRoster";
 import GameControls from "../components/dashboard/GameControls";
 import ActionPickerSheet from "../components/dashboard/ActionPickerSheet";
+import PlayerPickerSheet from "../components/dashboard/PlayerPickerSheet";
 import { useAuth } from "../context/AuthContext";
 import { useIsCompact } from "../hooks/useBreakpoint";
 
@@ -32,6 +33,12 @@ const DashboardPageContent = () => {
   const [activeTab, setActiveTab] = useState<"actions" | "roster" | "logs">("actions");
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [activeActionZone, setActiveActionZone] = useState<{
+    action: NightActionType | "vote";
+    players: Player[];
+    label: string;
+    icon: string;
+  } | null>(null);
   const [ariaAnnouncement, setAriaAnnouncement] = useState("");
   const isMobile = useIsCompact("lg");
   const noteFieldId = useId();
@@ -270,6 +277,15 @@ const DashboardPageContent = () => {
     setActiveTab("actions");
   };
 
+  const handleZonePlayerSelect = (playerId: number) => {
+    if (!activeActionZone) return;
+    if (activeActionZone.action === "vote") {
+      setVoteTarget(playerId);
+    } else {
+      setPlannedNightActions((prev) => ({ ...prev, [activeActionZone.action]: playerId }));
+    }
+  };
+
   const switchPhase = async (phase: GamePhase) => {
     if (!game) return;
 
@@ -423,6 +439,21 @@ const DashboardPageContent = () => {
               <span className={`rounded-full border px-3 py-0.5 text-xs font-semibold ${palette.badge}`}>
                 {alivePlayers.length} alive
               </span>
+              <button
+                type="button"
+                title="Click to copy game ID"
+                onClick={() => {
+                  void navigator.clipboard.writeText(game.id).then(() =>
+                    showToast(`Copied game ID: ${game.id}`)
+                  );
+                }}
+                className="ml-auto flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-1 text-xs font-mono text-slate-300 transition hover:border-slate-500 hover:text-white"
+              >
+                #{game.id}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 text-slate-500">
+                  <path fillRule="evenodd" d="M10.986 3H12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h1.014A2.25 2.25 0 0 1 7.25 1h1.5a2.25 2.25 0 0 1 2.236 2ZM9.75 3.25a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0-.75.75v.5c0 .414.336.75.75.75h1.5a.75.75 0 0 0 .75-.75v-.5Z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
             <p className="mt-1 max-w-xl text-sm text-slate-400">
               {isDay
@@ -478,6 +509,9 @@ const DashboardPageContent = () => {
                     onNoteChange={setNote}
                     palette={palette}
                     isMobile
+                    onTapVoteZone={() =>
+                      setActiveActionZone({ action: "vote", players: alivePlayers, label: "Vote Out Player", icon: "🗳️" })
+                    }
                   />
                 ) : (
                   <NightPhasePanel
@@ -496,6 +530,15 @@ const DashboardPageContent = () => {
                     onNoteChange={setNote}
                     palette={palette}
                     isMobile
+                    onTapKillZone={() =>
+                      setActiveActionZone({ action: "kill", players: aliveNonMafiaPlayers, label: "Mafia Kill", icon: "🔪" })
+                    }
+                    onTapSaveZone={() =>
+                      setActiveActionZone({ action: "save", players: alivePlayers, label: "Doctor Save", icon: "🛡️" })
+                    }
+                    onTapInvestigateZone={() =>
+                      setActiveActionZone({ action: "investigate", players: investigateTargets, label: "Detective Investigate", icon: "🔍" })
+                    }
                   />
                 ))}
               {activeTab === "roster" && (
@@ -568,6 +611,16 @@ const DashboardPageContent = () => {
           hasAliveDetectives={hasAliveDetectives}
           onAssign={handleAssignAction}
           onClose={() => setSelectedPlayer(null)}
+        />
+      )}
+
+      {isMobile && activeActionZone && (
+        <PlayerPickerSheet
+          label={activeActionZone.label}
+          icon={activeActionZone.icon}
+          players={activeActionZone.players}
+          onSelect={handleZonePlayerSelect}
+          onClose={() => setActiveActionZone(null)}
         />
       )}
 
