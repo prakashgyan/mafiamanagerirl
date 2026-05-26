@@ -12,6 +12,7 @@ from app.schemas import (
     FinishGameRequest,
     GameActionRequest,
     GameCreateRequest,
+    NightActionsRequest,
     PhaseChangeRequest,
 )
 from app.services.game_service import GameManager, GameService
@@ -134,3 +135,38 @@ def test_invalid_action(active_game: GameManager):
         active_game.process_action(action)
     assert exc_info.value.status_code == 400
     assert "Unsupported action type" in exc_info.value.detail
+
+
+def test_doctor_self_save_survives_mafia_kill(game_service: GameService, test_user: User):
+    """Mafia kills doctor; doctor saves himself in same night → doctor survives, game continues."""
+    # 7 players: 3 mafia, 1 doctor, 3 villagers (mafia count == non-mafia when doctor killed)
+    payload = GameCreateRequest(
+        player_names=["Mafia1", "Mafia2", "Mafia3", "Doctor", "Vil1", "Vil2", "Vil3"]
+    )
+    manager = game_service.create_game(payload, test_user)
+    players = manager.bundle.players
+
+    assignments = [
+        {"player_id": players[0].id, "role": "Mafia"},
+        {"player_id": players[1].id, "role": "Mafia"},
+        {"player_id": players[2].id, "role": "Mafia"},
+        {"player_id": players[3].id, "role": "Doctor"},
+        {"player_id": players[4].id, "role": "Villager"},
+        {"player_id": players[5].id, "role": "Villager"},
+        {"player_id": players[6].id, "role": "Villager"},
+    ]
+    manager.assign_roles(AssignRolesRequest(assignments=assignments))
+    manager.start()
+    manager.change_phase(PhaseChangeRequest(phase=GamePhase.NIGHT))
+
+    doctor = next(p for p in manager.bundle.players if p.role == "Doctor")
+
+    manager.apply_night_actions(NightActionsRequest(actions=[
+        GameActionRequest(action_type="kill", target_player_id=doctor.id),
+        GameActionRequest(action_type="save", target_player_id=doctor.id),
+    ]))
+
+    doctor_after = manager.player_map[doctor.id]
+    assert doctor_after.is_alive, "Doctor should survive their own self-save"
+    assert manager.bundle.status == GameStatus.ACTIVE, "Game should still be active"
+    assert manager.bundle.winning_team is None, "No winner should be declared yet"

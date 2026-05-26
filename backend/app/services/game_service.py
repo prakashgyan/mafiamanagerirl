@@ -244,7 +244,7 @@ class GameManager:
         role_info = target_player.role or "Unknown"
         return action.note or f"Detective investigated {target_player.name}: {role_info}."
 
-    def process_action(self, action: schemas.GameActionRequest) -> bool:
+    def process_action(self, action: schemas.GameActionRequest, *, defer_winner_check: bool = False) -> bool:
         if self.bundle.status != GameStatus.ACTIVE:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Game not active")
 
@@ -264,6 +264,9 @@ class GameManager:
 
         if self.bundle.status == GameStatus.FINISHED:
             return True
+
+        if defer_winner_check:
+            return False
 
         winner = determine_winner(self.bundle)
         if winner:
@@ -291,9 +294,24 @@ class GameManager:
             )
 
         for action in payload.actions:
-            finished = self.process_action(action)
-            if finished:
+            self.process_action(action, defer_winner_check=True)
+            if self.bundle.status == GameStatus.FINISHED:
                 break
+
+        if self.bundle.status == GameStatus.ACTIVE:
+            winner = determine_winner(self.bundle)
+            if winner:
+                updated_game, final_log = self.datastore.update_game_with_log(
+                    self.id,
+                    changes={"status": GameStatus.FINISHED, "winning_team": winner},
+                    log_round=self.bundle.current_round,
+                    log_phase=self.bundle.current_phase,
+                    log_message=f"Game ended. {winner} win!",
+                )
+                if updated_game and final_log:
+                    self.sync_game_state(updated_game)
+                    self.append_log(final_log)
+
         self.broadcast(
             "night_actions_resolved",
             {"actions": [action.model_dump() for action in payload.actions]},

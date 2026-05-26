@@ -37,8 +37,17 @@ const NavBar = () => {
 
         <div className="flex flex-1" />
 
-        {/* Right side: Avatar */}
+        {/* Right side: Bug report + Avatar */}
         <div className="flex shrink-0 items-center gap-3">
+          <a
+            href="https://github.com/prakashgyan/mafiamanagerirl/issues/new"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-400 transition hover:border-white/20 hover:text-slate-200"
+          >
+            <span aria-hidden>🐛</span>
+            Report a bug
+          </a>
           {/* Avatar button */}
           <div className="relative" ref={menuRef}>
             <button
