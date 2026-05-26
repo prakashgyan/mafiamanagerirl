@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { GamePhase, User } from "../../services/api";
 
 type Palette = {
@@ -15,10 +13,26 @@ type GameControlsProps = {
   user: User | null;
   palette: Palette;
   onSwitchPhase: (phase: GamePhase) => void;
-  onFinishGame: (team: string) => void;
   onTogglePublicSync: () => void;
   onSyncNightEvents: () => void;
 };
+
+const Spinner = () => (
+  <svg
+    className="h-4 w-4 animate-spin"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    aria-hidden
+  >
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+    />
+  </svg>
+);
 
 const GameControls = ({
   isDay,
@@ -28,17 +42,9 @@ const GameControls = ({
   user,
   palette,
   onSwitchPhase,
-  onFinishGame,
   onTogglePublicSync,
   onSyncNightEvents,
 }: GameControlsProps) => {
-  const [pendingWinner, setPendingWinner] = useState<"Villagers" | "Mafia" | null>(null);
-
-  const handleConfirmWin = () => {
-    if (!pendingWinner) return;
-    onFinishGame(pendingWinner);
-    setPendingWinner(null);
-  };
 
   return (
     <div className="mb-8 rounded-3xl border border-white/10 bg-slate-900/70 px-6 py-5 shadow-xl shadow-slate-950/60">
@@ -57,16 +63,27 @@ const GameControls = ({
               instantPublicUpdates ? "border-emerald-400/70 bg-emerald-500/60" : "border-white/20 bg-slate-800"
             } ${updatingPublicPreference || !user ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
           >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
-                instantPublicUpdates ? "translate-x-5" : "translate-x-1"
-              }`}
-            />
+            {updatingPublicPreference ? (
+              <span className="absolute inset-0 flex items-center justify-center">
+                <svg className="h-3 w-3 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </span>
+            ) : (
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                  instantPublicUpdates ? "translate-x-5" : "translate-x-1"
+                }`}
+              />
+            )}
           </button>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-white">Instant public view</span>
             <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">
-              {instantPublicUpdates ? "Live updates pushed to public screen." : "Hold until you reveal night events."}
+              {instantPublicUpdates
+                ? "Live updates pushed to public screen."
+                : "OFF — use the button below to reveal manually."}
             </span>
           </div>
         </div>
@@ -77,11 +94,12 @@ const GameControls = ({
             <button
               onClick={() => onSwitchPhase(isDay ? "night" : "day")}
               disabled={processingQueuedActions}
-              className={`inline-flex items-center justify-center rounded-2xl px-5 py-2 text-sm font-semibold transition ${palette.primaryButton} ${
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2 text-sm font-semibold transition ${palette.primaryButton} ${
                 processingQueuedActions ? "cursor-not-allowed opacity-80" : ""
               }`}
             >
-              {processingQueuedActions ? "Resolving Actions…" : `End ${isDay ? "Day" : "Night"}`}
+              {processingQueuedActions && <Spinner />}
+              {processingQueuedActions ? "Resolving…" : `End ${isDay ? "Day" : "Night"}`}
             </button>
             {!instantPublicUpdates && (
               <button
@@ -89,51 +107,8 @@ const GameControls = ({
                 className={`inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold transition ${palette.syncButton}`}
                 disabled={updatingPublicPreference}
               >
-                Reveal Night Events
+                Reveal to Public Now
               </button>
-            )}
-          </div>
-
-          {/* Win declaration */}
-          <div className="flex flex-wrap items-center gap-2">
-            {pendingWinner ? (
-              <>
-                <span className="text-sm font-semibold text-white">Confirm {pendingWinner} win?</span>
-                <button
-                  onClick={handleConfirmWin}
-                  className={`inline-flex items-center justify-center rounded-xl px-4 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-                    pendingWinner === "Villagers"
-                      ? "bg-emerald-500 text-slate-900 hover:bg-emerald-400"
-                      : "bg-rose-500 text-white hover:bg-rose-400"
-                  }`}
-                >
-                  Yes, confirm
-                </button>
-                <button
-                  onClick={() => setPendingWinner(null)}
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-600 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-slate-400"
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">
-                  Declare winner:
-                </span>
-                <button
-                  onClick={() => setPendingWinner("Villagers")}
-                  className="inline-flex items-center justify-center rounded-xl border border-emerald-400/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-300 transition hover:border-emerald-400/80 hover:bg-emerald-500/10"
-                >
-                  Villagers Win
-                </button>
-                <button
-                  onClick={() => setPendingWinner("Mafia")}
-                  className="inline-flex items-center justify-center rounded-xl border border-rose-400/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-rose-300 transition hover:border-rose-400/80 hover:bg-rose-500/10"
-                >
-                  Mafia Win
-                </button>
-              </>
             )}
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
@@ -10,7 +10,9 @@ import DayPhasePanel from "../components/dashboard/DayPhasePanel";
 import NightPhasePanel from "../components/dashboard/NightPhasePanel";
 import PlayerRoster from "../components/dashboard/PlayerRoster";
 import GameControls from "../components/dashboard/GameControls";
+import ActionPickerSheet from "../components/dashboard/ActionPickerSheet";
 import { useAuth } from "../context/AuthContext";
+import { useIsCompact } from "../hooks/useBreakpoint";
 
 type NightActionType = "kill" | "save" | "investigate";
 
@@ -27,7 +29,19 @@ const DashboardPageContent = () => {
   const [note, setNote] = useState("");
   const [instantPublicUpdates, setInstantPublicUpdates] = useState<boolean>(user?.public_auto_sync_enabled ?? true);
   const [updatingPublicPreference, setUpdatingPublicPreference] = useState(false);
+  const [activeTab, setActiveTab] = useState<"actions" | "roster" | "logs">("actions");
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [ariaAnnouncement, setAriaAnnouncement] = useState("");
+  const isMobile = useIsCompact("lg");
   const noteFieldId = useId();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const loadGame = useCallback(async () => {
     if (!gameId) return;
@@ -241,6 +255,21 @@ const DashboardPageContent = () => {
     setPlannedNightActions({});
   }, [game, note, plannedNightActions]);
 
+  const handleTapPlayer = (player: Player) => {
+    if (!player.is_alive) return;
+    setSelectedPlayer(player);
+  };
+
+  const handleAssignAction = (action: "vote" | "kill" | "save" | "investigate") => {
+    if (!selectedPlayer) return;
+    if (action === "vote") {
+      setVoteTarget(selectedPlayer.id);
+    } else {
+      setPlannedNightActions((prev) => ({ ...prev, [action]: selectedPlayer.id }));
+    }
+    setActiveTab("actions");
+  };
+
   const switchPhase = async (phase: GamePhase) => {
     if (!game) return;
 
@@ -267,6 +296,11 @@ const DashboardPageContent = () => {
       if (phase === "night") {
         setPlannedNightActions({});
         setVoteTarget(undefined);
+        showToast("🌙 Night phase started");
+        setAriaAnnouncement("Night phase started");
+      } else {
+        showToast("☀️ Day phase started");
+        setAriaAnnouncement("Day phase started");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to switch phase");
@@ -274,18 +308,6 @@ const DashboardPageContent = () => {
       if ((phase === "day" && game.current_phase === "night") || (phase === "night" && game.current_phase === "day")) {
         setProcessingQueuedActions(false);
       }
-    }
-  };
-
-  const finishGame = async (winningTeam: string) => {
-    if (!game) return;
-    try {
-      const updated = await api.finishGame(game.id, winningTeam);
-      setGame(updated);
-      setError(null);
-      navigate(`/games/${game.id}/over`, { replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to end game");
     }
   };
 
@@ -329,7 +351,7 @@ const DashboardPageContent = () => {
     return <Spinner message="Loading dashboard..." />;
   }
 
-  if (error) {
+  if (!game && error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-rose-300">
         <p className="text-sm">{error}</p>
@@ -374,6 +396,7 @@ const DashboardPageContent = () => {
       };
 
   return (
+    <>
     <div className={`relative min-h-screen ${palette.background} text-slate-100`}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className={`absolute left-[12%] top-0 h-72 w-72 rounded-full blur-3xl ${palette.glowPrimary}`} />
@@ -416,54 +439,176 @@ const DashboardPageContent = () => {
             user={user}
             palette={palette}
             onSwitchPhase={(phase) => void switchPhase(phase)}
-            onFinishGame={(team) => void finishGame(team)}
             onTogglePublicSync={() => void handleTogglePublicSync()}
             onSyncNightEvents={() => void syncNightEvents()}
           />
 
-          <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-            {isDay ? (
-              <DayPhasePanel
-                alivePlayers={alivePlayers}
-                voteTarget={voteTarget}
-                onVote={setVoteTarget}
-                onClearVote={() => setVoteTarget(undefined)}
-                note={note}
-                noteId={noteFieldId}
-                onNoteChange={setNote}
-                palette={palette}
-              />
-            ) : (
-              <NightPhasePanel
-                alivePlayers={alivePlayers}
-                aliveNonMafiaPlayers={aliveNonMafiaPlayers}
-                investigateTargets={investigateTargets}
-                hasAliveDoctors={hasAliveDoctors}
-                hasAliveDetectives={hasAliveDetectives}
-                plannedNightActions={plannedNightActions}
-                onPlanAction={(action, id) =>
-                  setPlannedNightActions((prev) => ({ ...prev, [action]: id }))
-                }
-                onClearAction={clearNightAction}
-                note={note}
-                noteId={noteFieldId}
-                onNoteChange={setNote}
-                palette={palette}
-              />
-            )}
+          {/* Inline error banner (shown after initial load when game is present) */}
+          {game && error && (
+            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-300">
+              <span className="flex-1">{error}</span>
+              <button
+                onClick={() => void loadGame()}
+                className="rounded-lg bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-400"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => setError(null)}
+                aria-label="Dismiss error"
+                className="text-rose-400 hover:text-rose-200"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
-            <PlayerRoster players={sortedPlayers} />
-          </div>
+          {/* Mobile tab bar */}
+          {isMobile && (
+            <div className="sticky top-0 z-20 -mx-6 mb-5 px-6 pb-2 pt-1 bg-slate-950/90 backdrop-blur-md">
+              <div className="flex gap-1 rounded-2xl border border-white/10 bg-slate-900/60 p-1">
+                {(
+                  [
+                    { id: "actions", label: isDay ? "⚔️ Actions" : "🌙 Actions" },
+                    { id: "roster", label: "👥 Roster" },
+                    { id: "logs", label: "📋 Logs" },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
+                      activeTab === id
+                        ? "bg-slate-700 text-white shadow"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-          <LogsSection
-            className="mt-8 border-white/10 bg-slate-900/70 shadow-2xl shadow-slate-950/60"
-            logs={game.logs}
-            players={game.players}
-            title="Logs"
-            subtitle="Auto-updating"
-          />
+          {isMobile ? (
+            <>
+              {activeTab === "actions" &&
+                (isDay ? (
+                  <DayPhasePanel
+                    alivePlayers={alivePlayers}
+                    voteTarget={voteTarget}
+                    onVote={setVoteTarget}
+                    onClearVote={() => setVoteTarget(undefined)}
+                    note={note}
+                    noteId={noteFieldId}
+                    onNoteChange={setNote}
+                    palette={palette}
+                    isMobile
+                  />
+                ) : (
+                  <NightPhasePanel
+                    alivePlayers={alivePlayers}
+                    aliveNonMafiaPlayers={aliveNonMafiaPlayers}
+                    investigateTargets={investigateTargets}
+                    hasAliveDoctors={hasAliveDoctors}
+                    hasAliveDetectives={hasAliveDetectives}
+                    plannedNightActions={plannedNightActions}
+                    onPlanAction={(action, id) =>
+                      setPlannedNightActions((prev) => ({ ...prev, [action]: id }))
+                    }
+                    onClearAction={clearNightAction}
+                    note={note}
+                    noteId={noteFieldId}
+                    onNoteChange={setNote}
+                    palette={palette}
+                    isMobile
+                  />
+                ))}
+              {activeTab === "roster" && (
+                <PlayerRoster players={sortedPlayers} isMobile onTap={handleTapPlayer} />
+              )}
+              {activeTab === "logs" && (
+                <LogsSection
+                  className="border-white/10 bg-slate-900/70 shadow-2xl shadow-slate-950/60"
+                  logs={game.logs}
+                  players={game.players}
+                  title="Logs"
+                  subtitle="Auto-updating"
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+                {isDay ? (
+                  <DayPhasePanel
+                    alivePlayers={alivePlayers}
+                    voteTarget={voteTarget}
+                    onVote={setVoteTarget}
+                    onClearVote={() => setVoteTarget(undefined)}
+                    note={note}
+                    noteId={noteFieldId}
+                    onNoteChange={setNote}
+                    palette={palette}
+                  />
+                ) : (
+                  <NightPhasePanel
+                    alivePlayers={alivePlayers}
+                    aliveNonMafiaPlayers={aliveNonMafiaPlayers}
+                    investigateTargets={investigateTargets}
+                    hasAliveDoctors={hasAliveDoctors}
+                    hasAliveDetectives={hasAliveDetectives}
+                    plannedNightActions={plannedNightActions}
+                    onPlanAction={(action, id) =>
+                      setPlannedNightActions((prev) => ({ ...prev, [action]: id }))
+                    }
+                    onClearAction={clearNightAction}
+                    note={note}
+                    noteId={noteFieldId}
+                    onNoteChange={setNote}
+                    palette={palette}
+                  />
+                )}
+                <PlayerRoster players={sortedPlayers} />
+              </div>
+
+              <LogsSection
+                className="mt-8 border-white/10 bg-slate-900/70 shadow-2xl shadow-slate-950/60"
+                logs={game.logs}
+                players={game.players}
+                title="Logs"
+                subtitle="Auto-updating"
+              />
+            </>
+          )}
         </div>
       </div>
+
+      {isMobile && selectedPlayer && (
+        <ActionPickerSheet
+          player={selectedPlayer}
+          isDay={isDay}
+          eligibleForKill={aliveNonMafiaPlayers.some((p) => p.id === selectedPlayer.id)}
+          hasAliveDoctors={hasAliveDoctors}
+          eligibleForInvestigate={investigateTargets.some((p) => p.id === selectedPlayer.id)}
+          hasAliveDetectives={hasAliveDetectives}
+          onAssign={handleAssignAction}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
+
+      {/* Phase-change toast */}
+      {toast && (
+        <div className="pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-slate-800/90 px-5 py-2.5 text-sm font-semibold text-white shadow-xl backdrop-blur-sm">
+          {toast}
+        </div>
+      )}
+
+      {/* Accessible phase announcements */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {ariaAnnouncement}
+      </div>
+    </>
   );
 };
 

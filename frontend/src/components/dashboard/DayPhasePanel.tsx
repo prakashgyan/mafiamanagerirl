@@ -21,6 +21,7 @@ type DayPhasePanelProps = {
   noteId: string;
   onNoteChange: (value: string) => void;
   palette: Palette;
+  isMobile?: boolean;
 };
 
 const DayPhasePanel = ({
@@ -32,6 +33,7 @@ const DayPhasePanel = ({
   noteId,
   onNoteChange,
   palette,
+  isMobile,
 }: DayPhasePanelProps) => {
   const voteEligibleIds = new Set(alivePlayers.map((p) => p.id));
 
@@ -54,14 +56,16 @@ const DayPhasePanel = ({
     "flex flex-col gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm transition-colors duration-200 shadow-sm shadow-black/30";
   const stateClasses =
     isOver && canDrop ? palette.hoverBorder : selectedPlayer ? palette.readyBorder : palette.idleBorder;
-  const placeholder = alivePlayers.length === 0 ? "No eligible players" : "Drag a player here";
+  const placeholder = alivePlayers.length === 0 ? "No eligible players" : isMobile ? "Tap a player in the Roster tab" : "Drag a player here";
 
   return (
     <section className="space-y-6 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-slate-950/60">
       <div>
         <h2 className="text-lg font-semibold text-white">Vote Phase</h2>
         <p className="text-xs uppercase tracking-wide text-slate-400">
-          Drag an eligible player into the vote zone. The elimination happens when you end the day.
+          {isMobile
+            ? "Tap a player in the Roster tab to nominate them. The elimination happens when you end the day."
+            : "Drag an eligible player into the vote zone. The elimination happens when you end the day."}
         </p>
       </div>
 
@@ -90,13 +94,19 @@ const DayPhasePanel = ({
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-2 text-center">
-            <span className="text-2xl" aria-hidden>👆</span>
+            <span className="text-2xl" aria-hidden>{isMobile ? "👆" : "👆"}</span>
             <p className="text-sm font-medium text-slate-300">
-              {alivePlayers.length === 0 ? "No eligible players" : "Drag a player here to nominate them"}
+              {alivePlayers.length === 0
+                ? "No eligible players"
+                : isMobile
+                ? "Go to the Roster tab and tap a player"
+                : "Drag a player here to nominate them"}
             </p>
             <p className="text-xs text-slate-500">
               {alivePlayers.length === 0
                 ? "No players currently meet the requirements."
+                : isMobile
+                ? "They'll appear here once selected."
                 : "Grab a player card from the roster on the right →"}
             </p>
           </div>

@@ -24,6 +24,7 @@ type DropZoneProps = {
   isEnabled: boolean;
   disabledMessage?: string;
   palette: Palette;
+  isMobile?: boolean;
   onDrop: (playerId: number) => void;
   onClear: () => void;
 };
@@ -38,6 +39,7 @@ const NightDropZone = ({
   isEnabled,
   disabledMessage,
   palette,
+  isMobile,
   onDrop,
   onClear,
 }: DropZoneProps) => {
@@ -71,6 +73,8 @@ const NightDropZone = ({
     ? disabledMessage ?? "Role eliminated."
     : allowedPlayers.length === 0
     ? "No eligible players"
+    : isMobile
+    ? "Tap a player in the Roster tab"
     : "Drag a player here";
 
   return (
@@ -102,7 +106,9 @@ const NightDropZone = ({
           {isEnabled && allowedPlayers.length > 0 && <span className="text-xl" aria-hidden>👆</span>}
           <p className="text-sm text-slate-400">{placeholder}</p>
           {isEnabled && allowedPlayers.length > 0 && (
-            <p className="text-xs text-slate-500">Grab a player card from the roster →</p>
+            <p className="text-xs text-slate-500">
+              {isMobile ? "Go to the Roster tab and tap a player." : "Grab a player card from the roster →"}
+            </p>
           )}
         </div>
       )}
@@ -128,6 +134,7 @@ type NightPhasePanelProps = {
   noteId: string;
   onNoteChange: (value: string) => void;
   palette: Palette;
+  isMobile?: boolean;
 };
 
 const NightPhasePanel = ({
@@ -143,6 +150,7 @@ const NightPhasePanel = ({
   noteId,
   onNoteChange,
   palette,
+  isMobile,
 }: NightPhasePanelProps) => {
   const killTargetPlayer = alivePlayers.find((p) => p.id === plannedNightActions.kill);
   const saveTargetPlayer = alivePlayers.find((p) => p.id === plannedNightActions.save);
@@ -153,7 +161,9 @@ const NightPhasePanel = ({
       <div>
         <h2 className="text-lg font-semibold text-white">Night Actions</h2>
         <p className="text-xs uppercase tracking-wide text-slate-400">
-          Queue the mafia, doctor, and detective actions. They resolve when you end the night.
+          {isMobile
+            ? "Tap players in the Roster tab to assign actions. They resolve when you end the night."
+            : "Queue the mafia, doctor, and detective actions. They resolve when you end the night."}
         </p>
       </div>
 
@@ -167,6 +177,7 @@ const NightPhasePanel = ({
           plannedSaveId={plannedNightActions.save}
           isEnabled
           palette={palette}
+          isMobile={isMobile}
           onDrop={(id) => onPlanAction("kill", id)}
           onClear={() => onClearAction("kill")}
         />
@@ -178,6 +189,7 @@ const NightPhasePanel = ({
           isEnabled={hasAliveDoctors}
           disabledMessage="No living doctors — unable to save."
           palette={palette}
+          isMobile={isMobile}
           onDrop={(id) => onPlanAction("save", id)}
           onClear={() => onClearAction("save")}
         />
@@ -189,6 +201,7 @@ const NightPhasePanel = ({
           isEnabled={hasAliveDetectives}
           disabledMessage="No living detectives — unable to investigate."
           palette={palette}
+          isMobile={isMobile}
           onDrop={(id) => onPlanAction("investigate", id)}
           onClear={() => onClearAction("investigate")}
         />
