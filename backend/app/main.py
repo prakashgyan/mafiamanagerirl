@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -23,7 +26,18 @@ settings = get_settings()
 logger.bind(environment=settings.environment).info("Booting MafiaDesk backend")
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
-app = FastAPI(title="MafiaDesk", version="1.0.0")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initialising database…")
+    t0 = asyncio.get_event_loop().time()
+    await asyncio.to_thread(init_db)
+    logger.info("Database ready in {:.2f}s", asyncio.get_event_loop().time() - t0)
+    yield
+
+
+app = FastAPI(title="MafiaDesk", version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -36,8 +50,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-init_db()
 
 include_routers(app)
 
@@ -53,6 +65,8 @@ async def websocket_endpoint(
     game_id: str,
 ) -> None:
     await manager.connect(game_id, websocket)
+
+    # Acquire DB only for the initial state broadcast, then release immediately.
     db_gen = get_db()
     db = next(db_gen)
     try:
@@ -61,6 +75,14 @@ async def websocket_endpoint(
         game_manager = game_service.get_game_manager(game_id)
         if game_manager:
             await manager.broadcast(game_id, game_manager.serialize_for_broadcast("init"))
+    finally:
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
+
+    # Hold the socket open without occupying a DB connection.
+    try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
@@ -69,8 +91,3 @@ async def websocket_endpoint(
         logger.exception("WebSocket error during session for game {}", game_id)
         manager.disconnect(game_id, websocket)
         await websocket.close(code=1011)
-    finally:
-        try:
-            next(db_gen)
-        except StopIteration:
-            pass

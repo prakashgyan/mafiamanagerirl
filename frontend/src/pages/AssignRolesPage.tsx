@@ -1,13 +1,13 @@
-import { FC, useEffect, useMemo, useState } from "react";
+import { FC, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop, DragSourceMonitor, DropTargetMonitor } from "react-dnd";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { api, GameDetail, Player } from "../services/api";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
 import PlayerAvatar from "../components/PlayerAvatar";
-import BackdropLogo from "../components/BackdropLogo";
 import Spinner from "../components/Spinner";
 import { ROLE_KEYS, RoleName, RoleCounts, DEFAULT_ROLE_COUNTS, PLAYER_DND_TYPE } from "../constants/roles";
+import { useIsCompact } from "../hooks/useBreakpoint";
 
 const isRoleName = (value: unknown): value is RoleName => ROLE_KEYS.includes(value as RoleName);
 
@@ -33,9 +33,10 @@ type RoleColumnProps = {
   players: Player[];
   onDrop: (player: Player) => void;
   onRemove: (playerId: number) => void;
+  isMobile?: boolean;
 };
 
-const RoleColumn = ({ role, capacity, players, onDrop, onRemove }: RoleColumnProps) => {
+const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile }: RoleColumnProps) => {
   const [{ isOver, canDrop }, dropRef] = useDrop<DragPayload, void, { isOver: boolean; canDrop: boolean }>(
     {
       accept: DND_TYPE,
@@ -54,13 +55,13 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove }: RoleColumnPro
 
   return (
     <div
-      ref={dropRef}
+      ref={isMobile ? undefined : dropRef}
       className={`space-y-3 rounded-2xl border px-4 py-4 shadow-sm shadow-black/20 transition ${
-        isOver && canDrop
+        !isMobile && isOver && canDrop
           ? meta.dropActive
           : full
           ? meta.full
-          : `border-slate-800 bg-slate-950/60 ${meta.accent}`
+          : `border-slate-800 bg-slate-950/60 ${isMobile ? "" : meta.accent}`
       }`}
     >
       <header className="flex items-start justify-between gap-2">
@@ -87,7 +88,7 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove }: RoleColumnPro
         ))}
         {players.length === 0 && (
           <p className="rounded-xl border border-dashed border-slate-800 bg-slate-950/70 px-3 py-3 text-center text-xs text-slate-500">
-            Drop here
+            {isMobile ? "None assigned" : "Drop here"}
           </p>
         )}
       </div>
@@ -121,9 +122,11 @@ const AssignedPlayerCard: FC<AssignedPlayerProps> = ({ player, onRemove }: Assig
 
 type PlayerCardProps = {
   player: Player;
+  isMobile?: boolean;
+  onTap?: () => void;
 };
 
-const PlayerCard = ({ player }: PlayerCardProps) => {
+const PlayerCard = ({ player, isMobile, onTap }: PlayerCardProps) => {
   const [{ isDragging }, dragRef] = useDrag<DragPayload, void, { isDragging: boolean }>(
     () => ({
       type: DND_TYPE,
@@ -134,6 +137,20 @@ const PlayerCard = ({ player }: PlayerCardProps) => {
     }),
     [player]
   );
+
+  if (isMobile) {
+    return (
+      <button
+        onClick={onTap}
+        className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2.5 text-left text-sm text-slate-100 shadow-sm shadow-black/20 transition active:scale-[0.97] active:border-slate-500"
+      >
+        <span className="text-base text-sky-400 select-none" aria-hidden>+</span>
+        <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
+        <span className="flex-1 font-semibold">{player.name}</span>
+        <span className="text-[0.65rem] text-slate-500 uppercase tracking-wide">Tap</span>
+      </button>
+    );
+  }
 
   return (
     <div
@@ -149,14 +166,106 @@ const PlayerCard = ({ player }: PlayerCardProps) => {
   );
 };
 
+type RolePickerSheetProps = {
+  player: Player;
+  playersByRole: Record<RoleName, Player[]>;
+  counts: RoleCounts;
+  onAssign: (role: RoleName) => void;
+  onClose: () => void;
+};
+
+const RolePickerSheet = ({ player, playersByRole, counts, onAssign, onClose }: RolePickerSheetProps) => {
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal
+        aria-label={`Assign role for ${player.name}`}
+        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border-t border-white/10 bg-slate-900 px-5 pb-safe-bottom pt-4 shadow-2xl"
+        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+      >
+        {/* Drag handle */}
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-slate-700" />
+
+        {/* Player header */}
+        <div className="mb-4 flex items-center gap-3 border-b border-slate-800 pb-4">
+          <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
+          <div>
+            <p className="text-sm font-semibold text-white">{player.name}</p>
+            <p className="text-xs text-slate-500">Choose a role to assign</p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="ml-auto rounded-full bg-slate-800 p-1.5 text-slate-400 transition hover:text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Role buttons */}
+        <div className="space-y-2.5">
+          {ROLE_KEYS.map((role) => {
+            const meta = ROLE_META[role];
+            const filled = playersByRole[role].length;
+            const cap = counts[role];
+            const full = cap !== 0 && filled >= cap;
+
+            return (
+              <button
+                key={role}
+                disabled={full}
+                onClick={() => { onAssign(role); onClose(); }}
+                className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3.5 text-left transition ${
+                  full
+                    ? "cursor-not-allowed border-slate-800 bg-slate-950/60 opacity-40"
+                    : "border-slate-700 bg-slate-800/60 active:scale-[0.98] active:border-slate-500"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden>{meta.icon}</span>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{role}</p>
+                    <p className="text-[0.65rem] uppercase tracking-wide text-slate-500">
+                      {cap === 0 ? "Unlimited" : `${cap} slot${cap !== 1 ? "s" : ""}`}
+                    </p>
+                  </div>
+                </div>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  full ? "bg-amber-500/10 text-amber-300" : "bg-slate-700/80 text-slate-300"
+                }`}>
+                  {filled}/{cap === 0 ? "∞" : cap}
+                  {full && " · Full"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+};
+
 const AssignRolesPage = () => {
   const { state } = useLocation() as { state?: { roleCounts?: RoleCounts } };
   const { gameId } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsCompact("lg");
   const [game, setGame] = useState<GameDetail | null>(null);
   const [assignments, setAssignments] = useState<Record<number, RoleName>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   const counts = useMemo<RoleCounts>(
     () => ({
@@ -282,7 +391,6 @@ const AssignRolesPage = () => {
           <div className="absolute bottom-10 right-[18%] h-80 w-80 rounded-full bg-emerald-400/12 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
         </div>
-        <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 py-10 lg:py-14">
 
@@ -362,7 +470,9 @@ const AssignRolesPage = () => {
                     {unassignedPlayers.length}
                   </span>
                 </header>
-                <p className="mb-3 text-[0.7rem] text-slate-500 uppercase tracking-wide">Drag a card into a role →</p>
+                <p className="mb-3 text-[0.7rem] text-slate-500 uppercase tracking-wide">
+                  {isMobile ? "Tap a player to assign a role →" : "Drag a card into a role →"}
+                </p>
                 <div className="space-y-2">
                   {unassignedPlayers.length === 0 ? (
                     <p className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/70 px-4 py-4 text-center text-xs text-slate-500">
@@ -370,7 +480,12 @@ const AssignRolesPage = () => {
                     </p>
                   ) : (
                     unassignedPlayers.map((player) => (
-                      <PlayerCard key={player.id} player={player} />
+                      <PlayerCard
+                        key={player.id}
+                        player={player}
+                        isMobile={isMobile}
+                        onTap={() => setSelectedPlayer(player)}
+                      />
                     ))
                   )}
                 </div>
@@ -382,7 +497,9 @@ const AssignRolesPage = () => {
               <header className="mb-5 flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-white">Roles</h2>
-                  <p className="text-sm text-slate-400">Drop players into a faction</p>
+                  <p className="text-sm text-slate-400">
+                    {isMobile ? "Tap a player above to place them" : "Drop players into a faction"}
+                  </p>
                 </div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
                   {assignedPlayersCount} placed
@@ -397,6 +514,7 @@ const AssignRolesPage = () => {
                     players={playersByRole[role]}
                     onDrop={(player) => handleDrop(player, role)}
                     onRemove={handleRemove}
+                    isMobile={isMobile}
                   />
                 ))}
               </div>
@@ -405,8 +523,18 @@ const AssignRolesPage = () => {
         </div>
       </div>
 
+      {selectedPlayer && (
+        <RolePickerSheet
+          player={selectedPlayer}
+          playersByRole={playersByRole}
+          counts={counts}
+          onAssign={(role) => handleDrop(selectedPlayer, role)}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
+
       {isComplete && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 border-t border-emerald-500/30 bg-slate-950/90 px-6 py-4 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-between gap-4 border-t border-emerald-500/30 bg-slate-950/90 px-6 py-4 backdrop-blur-xl">
           <div>
             <p className="text-sm font-semibold text-emerald-300">All players assigned — ready to launch!</p>
             <p className="text-xs text-slate-400">{game.players.length} players · {totalSlots} slots filled</p>

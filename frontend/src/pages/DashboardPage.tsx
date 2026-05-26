@@ -5,7 +5,6 @@ import { useGameSocket } from "../hooks/useGameSocket";
 import LogsSection from "../components/LogTimeline";
 import { api, GameActionPayload, GameDetail, GamePhase, Player } from "../services/api";
 import ResponsiveDndProvider from "../components/ResponsiveDndProvider";
-import BackdropLogo from "../components/BackdropLogo";
 import Spinner from "../components/Spinner";
 import DayPhasePanel from "../components/dashboard/DayPhasePanel";
 import NightPhasePanel from "../components/dashboard/NightPhasePanel";
@@ -358,7 +357,7 @@ const DashboardPageContent = () => {
         idleBorder: "border-white/10 bg-slate-900/55",
         primaryButton: "bg-amber-400 hover:bg-amber-300 text-slate-900",
         syncButton: "bg-sky-500 hover:bg-sky-400 text-slate-900",
-        phaseBadge: "border-amber-400/60 bg-amber-500/10 text-amber-200",
+        phaseLabel: "text-sky-400",
       }
     : {
         background: "bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950",
@@ -371,7 +370,7 @@ const DashboardPageContent = () => {
         idleBorder: "border-white/10 bg-slate-900/55",
         primaryButton: "bg-indigo-400 hover:bg-indigo-300 text-slate-900",
         syncButton: "bg-sky-500 hover:bg-sky-400 text-slate-900",
-        phaseBadge: "border-amber-400/60 bg-amber-500/10 text-amber-200",
+        phaseLabel: "text-indigo-400",
       };
 
   return (
@@ -381,9 +380,8 @@ const DashboardPageContent = () => {
           <div className={`absolute bottom-14 right-[16%] h-80 w-80 rounded-full blur-3xl ${palette.glowSecondary}`} />
           <div className={`absolute inset-0 ${palette.radial}`} />
         </div>
-        <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
 
-        <div className="relative z-10 mx-auto max-w-6xl px-6 py-12">
+        <div className="relative z-10 mx-auto max-w-6xl px-6 py-10 lg:py-14">
           <button
             className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
             onClick={() => navigate("/profile")}
@@ -392,32 +390,23 @@ const DashboardPageContent = () => {
             Back
           </button>
 
-          <header className="mb-10 rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h1 className="text-3xl font-semibold text-white sm:text-4xl">Management dashboard</h1>
-                  <p className="text-sm text-slate-300">
-                    {isDay
-                      ? "Steer the town through accusations, votes, and reveals."
-                      : "Coordinate the night plan and keep every role in sync."}
-                  </p>
-                </div>
-              </div>
-              <div className="grid auto-rows-fr gap-3 text-sm text-slate-200 sm:grid-cols-2">
-                <div className={`rounded-2xl border px-4 py-3 text-center ${palette.phaseBadge}`}>
-                  <p className="text-[0.65rem] uppercase tracking-wide">Current phase</p>
-                  <p className="mt-1 min-h-[1.75rem] text-lg font-semibold">
-                    {isDay ? "Day" : "Night"} {game.current_round}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
-                  <p className="text-[0.65rem] uppercase tracking-wide text-slate-300">Alive players</p>
-                  <p className="mt-1 min-h-[1.75rem] text-lg font-semibold text-white">{alivePlayers.length}</p>
-                </div>
-              </div>
+          {/* Hero */}
+          <div className="mb-8 flex flex-col gap-1">
+            <p className={`text-sm font-semibold uppercase tracking-widest ${palette.phaseLabel}`}>
+              {isDay ? "Day Phase" : "Night Phase"} · Round {game.current_round}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold text-white sm:text-4xl">Management Dashboard</h1>
+              <span className={`rounded-full border px-3 py-0.5 text-xs font-semibold ${palette.badge}`}>
+                {alivePlayers.length} alive
+              </span>
             </div>
-          </header>
+            <p className="mt-1 max-w-xl text-sm text-slate-400">
+              {isDay
+                ? "Steer the town through accusations, votes, and reveals."
+                : "Coordinate the night plan and keep every role in sync."}
+            </p>
+          </div>
 
           <GameControls
             isDay={isDay}
