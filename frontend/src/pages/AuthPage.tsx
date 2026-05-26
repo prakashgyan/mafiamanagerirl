@@ -80,6 +80,14 @@ const AuthPage = () => {
     }
   };
 
+  const [watchCode, setWatchCode] = useState("");
+
+  const handleWatch = (e: FormEvent) => {
+    e.preventDefault();
+    const code = watchCode.trim().toUpperCase();
+    if (code) navigate(`/games/${code}/public`);
+  };
+
   const isBusy = authSubmitting || demoSubmitting;
 
   return (
@@ -194,6 +202,32 @@ const AuthPage = () => {
             <p className="text-center text-xs text-slate-600">
               Explore MafiaDesk with a ready-made roster. Resets every 24 hours.
             </p>
+
+            {/* Watch a game — guest access */}
+            <div className="flex items-center gap-3 pt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
+              <span className="h-px flex-1 bg-slate-800" aria-hidden />
+              <span>Watch a game</span>
+              <span className="h-px flex-1 bg-slate-800" aria-hidden />
+            </div>
+            <form onSubmit={handleWatch} className="flex gap-2">
+              <input
+                value={watchCode}
+                onChange={(e) => setWatchCode(e.target.value)}
+                placeholder="Game code e.g. 9D3XSQ"
+                maxLength={12}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 rounded-xl border border-slate-700/80 bg-slate-800/60 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/20"
+              />
+              <button
+                type="submit"
+                disabled={!watchCode.trim()}
+                className="shrink-0 rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Watch →
+              </button>
+            </form>
           </div>
         </div>
         </div>
