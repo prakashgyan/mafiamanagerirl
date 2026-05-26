@@ -383,6 +383,8 @@ const AssignRolesPage = () => {
     );
   }
 
+  if (!game) return null;
+
   return (
     <ResponsiveDndProvider>
       <div className="relative min-h-screen bg-slate-950 text-slate-100">
