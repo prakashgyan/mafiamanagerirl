@@ -104,3 +104,16 @@ a {
 
 .animation-delay-6000  { animation-delay: 6s;  }
 .animation-delay-12000 { animation-delay: 12s; }
+
+/* Player card animations */
+.animate-death-shake {
+  animation: death-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.animate-suspense-pulse {
+  animation: suspense-pulse 3s ease-in-out;
+}
+
+.animate-alive-glow {
+  animation: alive-glow 2.5s ease-in-out infinite;
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, memo, useState } from "react";
+import { useCallback, useEffect, useMemo, memo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
@@ -17,9 +17,11 @@ import { SpinnerIcon } from "../components/Spinner";
 type PlayerCardProps = {
   player: PublicGameDetail["players"][number];
   isAlive: boolean;
+  isNewlyEliminated: boolean;
+  isSuspense: boolean;
 };
 
-const PlayerCard = memo(({ player, isAlive }: PlayerCardProps) => {
+const PlayerCard = memo(({ player, isAlive, isNewlyEliminated, isSuspense }: PlayerCardProps) => {
   const normalizedAvatar = normalizeAvatar(player.avatar);
   const displayValue = normalizedAvatar ?? player.name?.trim().charAt(0)?.toUpperCase() ?? "🙂";
   const isImageAvatar = normalizedAvatar?.startsWith("http") || normalizedAvatar?.startsWith("data:");
@@ -31,32 +33,66 @@ const PlayerCard = memo(({ player, isAlive }: PlayerCardProps) => {
   const bottomTone = isAlive ? "bg-white/20" : "bg-rose-200/25";
   const dividerColor = isAlive ? "bg-white/50" : "bg-rose-100/60";
 
+  // Suspense overrides the border colour via animation; alive glow is permanent on alive cards.
+  const animationClass = isAlive
+    ? isSuspense
+      ? "animate-suspense-pulse"
+      : "animate-alive-glow"
+    : isNewlyEliminated
+      ? "animate-death-shake"
+      : "";
+
   return (
     <div
-      className={`relative w-32 h-40 overflow-hidden rounded-xl backdrop-blur-md transition-transform duration-300 border flex flex-col hover:scale-105 ${cardTone}`}
+      className={cn(
+        // Responsive sizing: scales up with viewport
+        "relative overflow-hidden rounded-xl backdrop-blur-md border flex flex-col",
+        "w-20 h-28 sm:w-24 sm:h-32 lg:w-28 lg:h-36 xl:w-32 xl:h-40",
+        "transition-transform duration-300 hover:scale-105",
+        cardTone,
+        animationClass,
+      )}
       role="article"
       aria-label={`${player.name}, ${isAlive ? "active" : "eliminated"}`}
     >
-      <div className={`absolute top-[75%] left-4 right-4 h-px ${dividerColor}`} />
+      {/* Eliminated rubber stamp overlay */}
+      {!isAlive && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none overflow-hidden">
+          <div className="rotate-[-28deg] border-2 border-rose-500/75 rounded px-1.5 py-0.5 bg-rose-950/40 backdrop-blur-[2px]">
+            <span className="block text-[8px] sm:text-[9px] xl:text-[10px] font-black uppercase tracking-[0.18em] text-rose-400">
+              Eliminated
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className={`absolute top-[75%] left-3 right-3 h-px ${dividerColor}`} />
       <div className="relative grid h-full grid-rows-[3fr_1fr]">
-        <div className="relative flex items-center justify-center px-3 pt-4 pb-2">
+        <div className="relative flex items-center justify-center px-2 pt-3 pb-1">
           <div className={`pointer-events-none absolute inset-0 rounded-t-xl ${topTone}`} />
           {isImageAvatar ? (
             <img
               src={displayValue}
               alt={player.name}
-              className={`relative z-10 h-16 w-16 rounded-lg object-cover shadow-lg transition-all duration-500 ${isAlive ? "" : "grayscale"}`}
+              className={cn(
+                "relative z-10 rounded-lg object-cover shadow-lg transition-all duration-500",
+                "h-12 w-12 sm:h-14 sm:w-14 lg:h-14 lg:w-14 xl:h-16 xl:w-16",
+                !isAlive && "grayscale",
+              )}
             />
           ) : (
-            <span className="relative z-10 text-4xl leading-none drop-shadow transition-all duration-500 text-white">
+            <span className={cn(
+              "relative z-10 leading-none drop-shadow transition-all duration-500 text-white",
+              "text-3xl sm:text-3xl lg:text-4xl",
+            )}>
               {displayValue}
             </span>
           )}
         </div>
-        <div className="relative flex items-center justify-center px-2 pb-3">
+        <div className="relative flex items-center justify-center px-2 pb-2">
           <div className={`pointer-events-none absolute inset-0 rounded-b-xl ${bottomTone}`} />
           <span
-            className="relative z-10 w-full text-center text-sm font-semibold leading-tight text-white truncate px-1"
+            className="relative z-10 w-full text-center font-semibold leading-tight text-white truncate px-1 text-[10px] sm:text-xs xl:text-sm"
             title={player.name}
           >
             {player.name}
@@ -97,6 +133,12 @@ const PublicViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Night reveal drama state
+  const prevAliveRef = useRef<Map<number, boolean>>(new Map());
+  const [newlyEliminatedIds, setNewlyEliminatedIds] = useState<Set<number>>(new Set());
+  const [suspenseActive, setSuspenseActive] = useState(false);
+  const suspenseTimerRef = useRef<number>();
+
   // Fix #11: shared loadGame callback used by both useEffect and retry button
   const loadGame = useCallback(async () => {
     if (!gameId) return;
@@ -105,6 +147,8 @@ const PublicViewPage = () => {
     try {
       const data = await api.getPublicGame(gameId);
       setGame(data);
+      // Seed the alive-state tracker so first WS message can detect transitions
+      prevAliveRef.current = new Map(data.players.map((p) => [p.id, p.public_is_alive]));
     } catch (err) {
       setError(getErrorMessage(err, "Failed to load game"));
     } finally {
@@ -116,6 +160,13 @@ const PublicViewPage = () => {
     void loadGame();
   }, [loadGame]);
 
+  // Cleanup suspense timer on unmount
+  useEffect(() => {
+    return () => {
+      if (suspenseTimerRef.current) window.clearTimeout(suspenseTimerRef.current);
+    };
+  }, []);
+
   const { status: socketStatus } = useGameSocket(gameId ?? null, {
     enabled: Boolean(gameId),
     onMessage: (message) => {
@@ -123,18 +174,42 @@ const PublicViewPage = () => {
       if (!message.players || !message.logs) return;
 
       setError(null);
+
+      const newPlayers = (message.players as Array<{ id: number; name: string; avatar?: string | null; public_is_alive?: boolean; is_alive?: boolean }>).map((p) => ({
+        id: p.id,
+        name: p.name,
+        avatar: p.avatar ?? null,
+        public_is_alive: p.public_is_alive ?? p.is_alive ?? true,
+      }));
+
+      // Detect players that just switched from alive → eliminated
+      const prevMap = prevAliveRef.current;
+      const newlyEliminated = new Set<number>();
+      for (const p of newPlayers) {
+        if (prevMap.get(p.id) === true && !p.public_is_alive) {
+          newlyEliminated.add(p.id);
+        }
+      }
+      prevAliveRef.current = new Map(newPlayers.map((p) => [p.id, p.public_is_alive]));
+
+      // Trigger dramatic suspense sequence on alive cards before revealing eliminations
+      if (newlyEliminated.size > 0) {
+        setSuspenseActive(true);
+        setNewlyEliminatedIds(newlyEliminated);
+        if (suspenseTimerRef.current) window.clearTimeout(suspenseTimerRef.current);
+        suspenseTimerRef.current = window.setTimeout(() => {
+          setSuspenseActive(false);
+          setNewlyEliminatedIds(new Set());
+        }, 3500);
+      }
+
       setGame({
         id: message.game_id,
         status: message.status,
         current_phase: message.phase,
         current_round: message.round,
         winning_team: message.winning_team ?? null,
-        players: (message.players as Array<{ id: number; name: string; avatar?: string | null; public_is_alive?: boolean; is_alive?: boolean }>).map((p) => ({
-          id: p.id,
-          name: p.name,
-          avatar: p.avatar ?? null,
-          public_is_alive: p.public_is_alive ?? p.is_alive ?? true,
-        })),
+        players: newPlayers,
       });
     },
   });
@@ -401,7 +476,13 @@ const PublicViewPage = () => {
             </span>
             <div className="flex max-w-2xl flex-wrap-reverse items-end content-end gap-3 max-h-[55vh] overflow-y-auto">
               {activePlayers.map((player) => (
-                <PlayerCard key={player.id} player={player} isAlive={true} />
+                <PlayerCard
+                  key={player.id}
+                  player={player}
+                  isAlive={true}
+                  isNewlyEliminated={false}
+                  isSuspense={suspenseActive}
+                />
               ))}
             </div>
           </div>
@@ -425,7 +506,13 @@ const PublicViewPage = () => {
             </span>
             <div className="flex max-w-2xl flex-wrap-reverse items-end content-end justify-end gap-3 max-h-[55vh] overflow-y-auto">
               {inactivePlayers.map((player) => (
-                <PlayerCard key={player.id} player={player} isAlive={false} />
+                <PlayerCard
+                  key={player.id}
+                  player={player}
+                  isAlive={false}
+                  isNewlyEliminated={newlyEliminatedIds.has(player.id)}
+                  isSuspense={false}
+                />
               ))}
             </div>
           </div>

@@ -26,6 +26,9 @@ module.exports = {
         'moon-rise': 'moon-rise 8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards',
         'moon-set': 'moon-set 8s cubic-bezier(0.64, 0, 0.78, 0.39) forwards',
         'fade-in-up': 'fade-in-up 0.2s ease-out forwards',
+        'death-shake': 'death-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97)',
+        'suspense-pulse': 'suspense-pulse 3s ease-in-out',
+        'alive-glow': 'alive-glow 2.5s ease-in-out infinite',
       },
       keyframes: {
         float: {
@@ -179,6 +182,27 @@ module.exports = {
         'fade-in-up': {
           '0%': { opacity: '0', transform: 'translateX(-50%) translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
+        },
+        'death-shake': {
+          '0%, 100%': { transform: 'translateX(0) rotate(0deg) scale(1)' },
+          '10%': { transform: 'translateX(-8px) rotate(-2deg) scale(1.03)' },
+          '20%': { transform: 'translateX(8px) rotate(2deg) scale(1.03)' },
+          '35%': { transform: 'translateX(-6px) rotate(-1.5deg)' },
+          '50%': { transform: 'translateX(6px) rotate(1.5deg)' },
+          '65%': { transform: 'translateX(-3px) rotate(-0.8deg)' },
+          '80%': { transform: 'translateX(3px) rotate(0.8deg)' },
+          '90%': { transform: 'translateX(-1px) rotate(-0.3deg)' },
+        },
+        'suspense-pulse': {
+          '0%':   { boxShadow: '0 0 8px rgba(74,222,128,0.4)',  borderColor: 'rgba(74,222,128,0.35)' },
+          '25%':  { boxShadow: '0 0 22px rgba(239,68,68,0.75)', borderColor: 'rgba(239,68,68,0.75)' },
+          '50%':  { boxShadow: '0 0 36px rgba(239,68,68,1)',    borderColor: 'rgba(239,68,68,0.9)'  },
+          '75%':  { boxShadow: '0 0 22px rgba(239,68,68,0.5)',  borderColor: 'rgba(239,68,68,0.5)'  },
+          '100%': { boxShadow: '0 0 8px rgba(74,222,128,0.4)',  borderColor: 'rgba(74,222,128,0.35)' },
+        },
+        'alive-glow': {
+          '0%, 100%': { boxShadow: '0 0 6px rgba(74,222,128,0.3)' },
+          '50%':       { boxShadow: '0 0 18px rgba(74,222,128,0.65)' },
         },
       }
     }
