@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { api, Friend } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
 import { FRIEND_AVATAR_OPTIONS, getRandomFriendAvatar, normalizeAvatar } from "../utils/avatarOptions";
-import BackdropLogo from "../components/BackdropLogo";
 
 const ANIMAL_COUNT = 20; // first 20 in FRIEND_AVATAR_OPTIONS are animals
 const animalAvatars = FRIEND_AVATAR_OPTIONS.slice(0, ANIMAL_COUNT);
@@ -108,7 +107,6 @@ const FriendsPage = () => {
         <div className="absolute bottom-0 right-[18%] h-96 w-96 rounded-full bg-emerald-400/12 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_58%)]" />
       </div>
-      <BackdropLogo className="right-[20%] top-[-2rem] w-[640px] opacity-40" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12 lg:py-16">
         <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
