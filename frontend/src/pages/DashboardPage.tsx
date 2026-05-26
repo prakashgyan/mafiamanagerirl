@@ -404,7 +404,7 @@ const DashboardPageContent = () => {
           <div className={`absolute inset-0 ${palette.radial}`} />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-6xl px-6 py-10 lg:py-14">
+        <div className="relative z-10 mx-auto max-w-6xl px-6 py-10 lg:py-14 lg:pb-14 pb-28">
           <button
             className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
             onClick={() => navigate("/profile")}
@@ -463,32 +463,6 @@ const DashboardPageContent = () => {
             </div>
           )}
 
-          {/* Mobile tab bar */}
-          {isMobile && (
-            <div className="sticky top-0 z-20 -mx-6 mb-5 px-6 pb-2 pt-1 bg-slate-950/90 backdrop-blur-md">
-              <div className="flex gap-1 rounded-2xl border border-white/10 bg-slate-900/60 p-1">
-                {(
-                  [
-                    { id: "actions", label: isDay ? "⚔️ Actions" : "🌙 Actions" },
-                    { id: "roster", label: "👥 Roster" },
-                    { id: "logs", label: "📋 Logs" },
-                  ] as const
-                ).map(({ id, label }) => (
-                  <button
-                    key={id}
-                    onClick={() => setActiveTab(id)}
-                    className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
-                      activeTab === id
-                        ? "bg-slate-700 text-white shadow"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {isMobile ? (
             <>
@@ -595,6 +569,31 @@ const DashboardPageContent = () => {
           onAssign={handleAssignAction}
           onClose={() => setSelectedPlayer(null)}
         />
+      )}
+
+      {/* Bottom tab bar — mobile only */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex gap-1 px-4 pb-safe pt-2 pb-4 backdrop-blur-md">
+          {(
+            [
+              { id: "actions", label: isDay ? "⚔️ Actions" : "🌙 Actions" },
+              { id: "roster", label: "👥 Roster" },
+              { id: "logs", label: "📋 Logs" },
+            ] as const
+          ).map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold transition ${
+                activeTab === id
+                  ? "bg-white/15 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
       )}
 
       {/* Phase-change toast */}
