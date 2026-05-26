@@ -108,24 +108,22 @@ const FriendsPage = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_58%)]" />
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12 lg:py-16">
-        <header className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-3">
-              <h1 className="text-3xl font-semibold text-white sm:text-4xl">Players & Regulars</h1>
-              <p className="max-w-2xl text-base text-slate-300">
-                Curate your go-to players, add quick notes, and keep the perfect balance of personalities for every
-                Mafia session.
-              </p>
-            </div>
-            <Link
-              to="/profile"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-700/60 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-400 hover:text-sky-200"
-            >
-              ← Back to Profile
-            </Link>
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-10 lg:py-14">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-semibold uppercase tracking-widest text-sky-400">Roster</p>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Players & Regulars</h1>
+            <p className="mt-1 max-w-xl text-sm text-slate-400">
+              Curate your go-to players, add quick notes, and keep the perfect balance of personalities for every Mafia session.
+            </p>
           </div>
-        </header>
+          <Link
+            to="/profile"
+            className="shrink-0 text-sm font-semibold text-slate-400 transition hover:text-sky-300"
+          >
+            ← Back to Profile
+          </Link>
+        </div>
 
         <section className="space-y-8">
           {/* Add Player Form */}

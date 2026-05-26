@@ -113,6 +113,24 @@ class GameManager:
             logs=[schemas.LogRead.model_validate(log) for log in self.bundle.logs],
         )
 
+    def serialize_for_public_api(self) -> schemas.PublicGameDetail:
+        return schemas.PublicGameDetail(
+            id=self.bundle.id,
+            status=self.bundle.status,
+            current_phase=self.bundle.current_phase,
+            current_round=self.bundle.current_round,
+            winning_team=self.bundle.winning_team,
+            players=[
+                schemas.PublicPlayerRead(
+                    id=p.id,
+                    name=p.name,
+                    avatar=p.avatar,
+                    public_is_alive=p.public_is_alive,
+                )
+                for p in self.bundle.players
+            ],
+        )
+
     def serialize_for_broadcast(self, event: str, payload: Optional[dict] = None) -> dict:
         message = {
             "event": event,

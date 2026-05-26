@@ -43,6 +43,16 @@ def create_game(
     return game_manager.serialize_for_api()
 
 
+@router.get("/{game_id}/public-view", response_model=schemas.PublicGameDetail)
+def get_game_public_view(
+    game_id: str,
+    game_service: GameService = Depends(get_game_service),
+) -> schemas.PublicGameDetail:
+    logger.bind(game_id=game_id).debug("Fetching public game view")
+    game_manager = game_service.get_game_manager(game_id)
+    return game_manager.serialize_for_public_api()
+
+
 @router.get("/{game_id}", response_model=schemas.GameDetail)
 def get_game(
     game_id: str,

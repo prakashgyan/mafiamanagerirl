@@ -55,6 +55,22 @@ export type GameDetail = GameSummary & {
   logs: LogEntry[];
 };
 
+export type PublicPlayer = {
+  id: number;
+  name: string;
+  avatar?: string | null;
+  public_is_alive: boolean;
+};
+
+export type PublicGameDetail = {
+  id: string;
+  status: GameStatus;
+  current_phase: GamePhase;
+  current_round: number;
+  winning_team?: string | null;
+  players: PublicPlayer[];
+};
+
 export type CreateGamePlayer = {
   name: string;
   avatar?: string | null;
@@ -186,6 +202,7 @@ export const api = {
   listGames: (status?: GameStatus) =>
     apiFetch<GameSummary[]>(status ? `/games/?status_filter=${status}` : "/games/"),
   getGame: (id: string) => apiFetch<GameDetail>(`/games/${id}`),
+  getPublicGame: (id: string) => apiFetch<PublicGameDetail>(`/games/${id}/public-view`),
   createGame: (players: CreateGamePlayer[]) =>
     apiFetch<GameDetail>("/games/new", { method: "POST", body: JSON.stringify({ players }) }),
   assignRoles: (gameId: string, assignments: { player_id: number; role: string }[]) =>

@@ -128,6 +128,24 @@ class GameDetail(GameRead):
     logs: List[LogRead]
 
 
+class PublicPlayerRead(BaseModel):
+    id: int
+    name: str
+    avatar: Optional[str] = None
+    public_is_alive: bool = True
+
+    model_config = {"from_attributes": True}
+
+
+class PublicGameDetail(BaseModel):
+    id: str
+    status: GameStatus
+    current_phase: GamePhase
+    current_round: int
+    winning_team: Optional[str] = None
+    players: List[PublicPlayerRead]
+
+
 class AssignRolesRequest(BaseModel):
     assignments: List[PlayerUpdateRole]
 

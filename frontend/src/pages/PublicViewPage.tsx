@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { useGameSocket } from "../hooks/useGameSocket";
-import { api, GameDetail } from "../services/api";
-import { useOptionalAuth } from "../context/AuthContext";
+import { api, PublicGameDetail } from "../services/api";
 import BackdropLogo from "../components/BackdropLogo";
 import { normalizeAvatar } from "../utils/avatarOptions";
 import { cn } from "../utils/cn";
@@ -13,16 +12,14 @@ import ANIMATION_CONSTANTS from "../constants/animationConstants";
 
 const PublicViewPage = () => {
   const { gameId } = useParams();
-  const navigate = useNavigate();
-  const [game, setGame] = useState<GameDetail | null>(null);
+  const [game, setGame] = useState<PublicGameDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const auth = useOptionalAuth();
 
   useEffect(() => {
     if (!gameId) return;
     void (async () => {
       try {
-        const data = await api.getGame(gameId);
+        const data = await api.getPublicGame(gameId);
         setGame(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load game");
@@ -43,8 +40,12 @@ const PublicViewPage = () => {
         current_phase: message.phase,
         current_round: message.round,
         winning_team: message.winning_team ?? null,
-        players: message.players,
-        logs: message.logs,
+        players: (message.players as Array<{ id: number; name: string; avatar?: string | null; public_is_alive?: boolean; is_alive?: boolean }>).map((p) => ({
+          id: p.id,
+          name: p.name,
+          avatar: p.avatar ?? null,
+          public_is_alive: p.public_is_alive ?? p.is_alive ?? true,
+        })),
       });
     },
   });
@@ -65,15 +66,15 @@ const PublicViewPage = () => {
   }, [socketStatus]);
 
   const activePlayers = useMemo(
-    () => game?.players.filter((player) => (player.public_is_alive ?? player.is_alive)) ?? [],
+    () => game?.players.filter((player) => player.public_is_alive) ?? [],
     [game?.players]
   );
   const inactivePlayers = useMemo(
-    () => game?.players.filter((player) => !(player.public_is_alive ?? player.is_alive)) ?? [],
+    () => game?.players.filter((player) => !player.public_is_alive) ?? [],
     [game?.players]
   );
   const isDay = game?.current_phase === "day";
-  const title = auth?.user?.username ? `${auth.user.username}'s game` : "Your game";
+  const title = game ? `Game #${game.id}` : "MafiaDesk";
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const getPlayerCardStyles = useCallback((isAlive: boolean) => {
@@ -91,7 +92,7 @@ const PublicViewPage = () => {
   }, []);
 
   const renderPlayerCard = (
-    player: GameDetail["players"][number],
+    player: PublicGameDetail["players"][number],
     isAlive: boolean
   ) => {
     const styles = getPlayerCardStyles(isAlive);
@@ -185,16 +186,9 @@ const PublicViewPage = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (game?.status === "finished") {
-      navigate(`/games/${game.id}/over`, { replace: true });
-    }
-  }, [game?.status, game?.id, navigate]);
-
-  if (error) {
+  if (!game && error) {
     return (
       <div className="flex min-h-screen items-center justify-center relative overflow-hidden">
-        {/* Animated background for error state */}
         <div className="absolute inset-0 bg-gradient-to-br from-red-900 via-red-800 to-black">
           <Stars isDay={false} />
           <FloatingParticles isDay={false} />
@@ -209,7 +203,7 @@ const PublicViewPage = () => {
               if (gameId) {
                 void (async () => {
                   try {
-                    const data = await api.getGame(gameId);
+                    const data = await api.getPublicGame(gameId);
                     setGame(data);
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Failed to load game");
@@ -223,10 +217,10 @@ const PublicViewPage = () => {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => { window.location.href = '/'; }}
             className="ml-4 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors"
           >
-            Go to Dashboard
+            Home
           </button>
         </div>
       </div>
@@ -236,6 +230,8 @@ const PublicViewPage = () => {
   if (!game) {
     return null;
   }
+
+  const isFinished = game.status === "finished";
 
   return (
     <div
@@ -277,6 +273,21 @@ const PublicViewPage = () => {
 
       {/* Content Overlay - No background, transparent */}
       <div className="relative z-10 min-h-screen">
+        {/* Game Over winner overlay */}
+        {isFinished && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="text-center px-8 py-10 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md max-w-sm mx-4">
+              <div className="text-6xl mb-4">🏆</div>
+              <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">Game Over</h2>
+              {game.winning_team && (
+                <p className="text-xl font-semibold text-yellow-300 mb-1">
+                  {game.winning_team} wins!
+                </p>
+              )}
+              <p className="text-sm text-white/60 mt-4">Game #{game.id}</p>
+            </div>
+          </div>
+        )}
         {/* Phase and User name - Top left corner */}
         <div className="absolute top-6 left-6 space-y-2">
           <div role="status" aria-live="polite" aria-atomic="true">
