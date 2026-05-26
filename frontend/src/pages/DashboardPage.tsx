@@ -598,7 +598,7 @@ const DashboardPageContent = () => {
 
       {/* Phase-change toast */}
       {toast && (
-        <div className="pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-slate-800/90 px-5 py-2.5 text-sm font-semibold text-white shadow-xl backdrop-blur-sm">
+        <div className="pointer-events-none fixed top-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-slate-800/90 px-5 py-2.5 text-sm font-semibold text-white shadow-xl backdrop-blur-sm">
           {toast}
         </div>
       )}

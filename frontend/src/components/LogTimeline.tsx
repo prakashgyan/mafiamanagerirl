@@ -103,13 +103,10 @@ const InlinePlayerChip = ({ player }: { player: Player }) => {
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-semibold ${style.border} ${style.background} ${style.text} mr-1`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${style.border} ${style.background} ${style.text} mr-0.5`}
     >
       <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="xs" />
       <span>{player.name}</span>
-      {player.role && (
-        <span className="text-[10px] uppercase tracking-wide text-slate-200/80">{player.role}</span>
-      )}
     </span>
   );
 };
@@ -263,7 +260,7 @@ const LogsSection = ({
   );
 
   const containerClasses = [
-    "rounded-2xl border border-slate-800 bg-slate-900/60 p-6",
+    "rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-5",
     className,
   ]
     .filter(Boolean)
@@ -272,44 +269,41 @@ const LogsSection = ({
   return (
     <section className={containerClasses}>
       <header className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        {subtitle ? <span className="text-sm text-slate-400">{subtitle}</span> : null}
+        <h2 className="text-base font-semibold text-white">{title}</h2>
+        {subtitle ? <span className="text-xs text-slate-500">{subtitle}</span> : null}
       </header>
-      <div className="space-y-4">
-        {groupedLogs.length === 0 && <p className="text-sm text-slate-400">{emptyMessage}</p>}
+
+      {groupedLogs.length === 0 && (
+        <p className="text-sm text-slate-400">{emptyMessage}</p>
+      )}
+
+      <div className="space-y-5">
         {groupedLogs.map((group) => {
-          const label = `${group.phase === "day" ? "Day" : "Night"} ${group.round}`;
-          const lastUpdated = group.latestTimestamp
-            ? new Date(group.latestTimestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : null;
+          const isDay = group.phase === "day";
+          const label = `${isDay ? "☀️ Day" : "🌙 Night"} ${group.round}`;
+          const dotColor = isDay ? "bg-amber-400" : "bg-indigo-400";
 
           return (
-            <div
-              key={`${group.phase}-${group.round}`}
-              className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold uppercase tracking-wide text-slate-200">{label}</span>
-                  <span className="rounded-full bg-slate-800/80 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-400">
-                    {group.logs.length} {group.logs.length === 1 ? "entry" : "entries"}
-                  </span>
-                </div>
-                {lastUpdated && (
-                  <span className="text-xs uppercase tracking-wide text-slate-500">Last update {lastUpdated}</span>
-                )}
+            <div key={`${group.phase}-${group.round}`}>
+              {/* Phase divider */}
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                  {label}
+                </span>
+                <div className="flex-1 border-t border-slate-800" />
               </div>
-              <ul className="space-y-2">
+
+              {/* Log rows — flat, no nested cards */}
+              <ul className="space-y-1">
                 {group.logs.map((log) => (
-                  <li
-                    key={log.id}
-                    className="flex items-center gap-3 rounded-lg border border-slate-800/80 bg-slate-900/60 px-3 py-2"
-                  >
-                    <span className="h-2 w-2 flex-shrink-0 rounded-full bg-slate-500" />
-                    <div className="flex flex-wrap items-center gap-2 text-sm leading-relaxed text-slate-200">
-                      <span className="text-[11px] uppercase tracking-wide text-slate-500">{formatTime(log.timestamp)}</span>
-                      <span className="flex flex-wrap items-center gap-1">{renderRichMessage(log.message)}</span>
-                    </div>
+                  <li key={log.id} className="flex items-start gap-2.5 py-1">
+                    <span className={`mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full ${dotColor}`} />
+                    <span className="flex-shrink-0 pt-px text-[11px] text-slate-500">
+                      {formatTime(log.timestamp)}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-x-0.5 gap-y-1 text-sm leading-snug text-slate-200">
+                      {renderRichMessage(log.message)}
+                    </span>
                   </li>
                 ))}
               </ul>
