@@ -25,6 +25,7 @@ module.exports = {
         'sun-set': 'sun-set 8s cubic-bezier(0.64, 0, 0.78, 0.39) forwards',
         'moon-rise': 'moon-rise 8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards',
         'moon-set': 'moon-set 8s cubic-bezier(0.64, 0, 0.78, 0.39) forwards',
+        'fade-in-up': 'fade-in-up 0.2s ease-out forwards',
       },
       keyframes: {
         float: {
@@ -174,6 +175,10 @@ module.exports = {
             opacity: '0',
             scale: '0.8',
           },
+        },
+        'fade-in-up': {
+          '0%': { opacity: '0', transform: 'translateX(-50%) translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
         },
       }
     }

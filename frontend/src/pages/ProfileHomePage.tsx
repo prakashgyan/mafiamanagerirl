@@ -5,24 +5,14 @@ import { useAuth } from "../context/AuthContext";
 import { api, Friend, GameSummary, LeaderboardEntry } from "../services/api";
 import PlayerAvatar from "../components/PlayerAvatar";
 
-const CopyUrlButton = ({ url }: { url: string }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    void navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="rounded-lg border border-slate-700/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-slate-400 hover:text-white"
-    >
-      {copied ? "Copied ✓" : "Copy Public View"}
-    </button>
-  );
-};
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up">
+    <div className="flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-slate-900/95 px-4 py-2.5 text-sm font-semibold text-emerald-300 shadow-xl shadow-slate-950/60 backdrop-blur-sm">
+      <span aria-hidden>✓</span>
+      {message}
+    </div>
+  </div>
+);
 
 const ProfileHomePage = () => {
   const { user } = useAuth();
@@ -73,6 +63,12 @@ const ProfileHomePage = () => {
   const ongoingGames = useMemo(() => [...pendingGames, ...activeGames], [pendingGames, activeGames]);
 
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  };
 
   const statCards = [
     { label: "Total Games", icon: "🎲", value: games.length, color: "text-white" },
@@ -83,6 +79,7 @@ const ProfileHomePage = () => {
 
   return (
     <div className="relative min-h-screen text-slate-100">
+      {toast && <Toast message={toast} />}
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:py-14">
 
         {/* Hero */}
@@ -248,7 +245,23 @@ const ProfileHomePage = () => {
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-wrap items-center gap-3">
-                          <span className="text-base font-medium text-white">Game #{game.id}</span>
+                          <button
+                            type="button"
+                            title="Click to copy public link"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(publicUrl).then(() =>
+                                showToast(`Copied link for game #${game.id}`)
+                              );
+                            }}
+                            className="group flex items-center gap-1.5 text-base font-medium text-white transition hover:text-sky-300"
+                          >
+                            Game #{game.id}
+                            <span className="text-slate-600 transition group-hover:text-sky-400" aria-hidden>
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                                <path fillRule="evenodd" d="M10.986 3H12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h1.014A2.25 2.25 0 0 1 7.25 1h1.5a2.25 2.25 0 0 1 2.236 2ZM9.75 3.25a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0-.75.75v.5c0 .414.336.75.75.75h1.5a.75.75 0 0 0 .75-.75v-.5Z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          </button>
                           <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeStyles}`}>
                             {statusLabel}
                           </span>
@@ -264,7 +277,12 @@ const ProfileHomePage = () => {
                           >
                             Resume
                           </button>
-                          <CopyUrlButton url={publicUrl} />
+                          <Link
+                            to={`/games/${game.id}/public`}
+                            className="rounded-lg border border-slate-700/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-sky-400/60 hover:text-sky-200"
+                          >
+                            Public View →
+                          </Link>
                         </div>
                       </div>
                     </div>
