@@ -12,6 +12,7 @@ import NewGamePage from "./pages/NewGamePage";
 import ProfileHomePage from "./pages/ProfileHomePage";
 import PublicViewPage from "./pages/PublicViewPage";
 import FriendsPage from "./pages/FriendsPage";
+import SupportPage from "./pages/SupportPage";
 import NavBar from "./components/NavBar";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -130,6 +131,14 @@ const App = () => {
         element={
           <RequireAuth>
             <GameOverPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/support"
+        element={
+          <RequireAuth>
+            <SupportPage />
           </RequireAuth>
         }
       />

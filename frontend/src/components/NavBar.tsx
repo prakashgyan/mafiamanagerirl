@@ -7,6 +7,7 @@ const MENU_ITEMS = [
   { to: "/profile", label: "Profile", icon: "👤" },
   { to: "/games/history", label: "History", icon: "📋" },
   { to: "/friends", label: "Players", icon: "👥" },
+  { to: "/support", label: "Support", icon: "❤️" },
 ];
 
 const NavBar = () => {
@@ -40,13 +41,13 @@ const NavBar = () => {
         {/* Right side: Bug report + Avatar */}
         <div className="flex shrink-0 items-center gap-3">
           <a
-            href="https://github.com/prakashgyan/mafiamanagerirl/issues/new"
+            href="https://www.patreon.com/mafiadesk"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-400 transition hover:border-white/20 hover:text-slate-200"
+            className="flex items-center gap-1.5 rounded-lg border border-[#f96854]/30 bg-[#f96854]/10 px-3 py-1.5 text-xs text-[#f96854] transition hover:border-[#f96854]/50 hover:bg-[#f96854]/15"
           >
-            <span aria-hidden>🐛</span>
-            Report a bug
+            <span aria-hidden>❤️</span>
+            Support
           </a>
           {/* Avatar button */}
           <div className="relative" ref={menuRef}>
