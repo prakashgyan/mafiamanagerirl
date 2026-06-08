@@ -11,6 +11,9 @@ import { Stars, Sun, Moon, Clouds, FloatingParticles } from "../components/publi
 import ANIMATION_CONSTANTS from "../constants/animationConstants";
 import { getErrorMessage } from "../utils/errorMessage";
 import { SpinnerIcon } from "../components/Spinner";
+import { computeSeats, type SeatArrangement } from "../utils/seatLayout";
+
+const ARRANGEMENT_STORAGE_KEY = "mafia-public-view-arrangement";
 
 // ─── PlayerCard ──────────────────────────────────────────────────────────────
 
@@ -26,83 +29,96 @@ const PlayerCard = memo(({ player, isAlive, isNewlyEliminated, isSuspense }: Pla
   const displayValue = normalizedAvatar ?? player.name?.trim().charAt(0)?.toUpperCase() ?? "🙂";
   const isImageAvatar = normalizedAvatar?.startsWith("http") || normalizedAvatar?.startsWith("data:");
 
-  const cardTone = isAlive
-    ? "bg-emerald-600/15 border-emerald-400/35 hover:bg-emerald-600/25"
-    : "bg-rose-600/20 border-rose-400/35 hover:bg-rose-600/30 opacity-75";
-  const topTone = isAlive ? "bg-white/35" : "bg-rose-200/35";
-  const bottomTone = isAlive ? "bg-white/20" : "bg-rose-200/25";
-  const dividerColor = isAlive ? "bg-white/50" : "bg-rose-100/60";
-
-  // Suspense overrides the border colour via animation; alive glow is permanent on alive cards.
+  // No idle animation on alive cards for now — only suspense/death react to events.
   const animationClass = isAlive
-    ? isSuspense
-      ? "animate-suspense-pulse"
-      : "animate-alive-glow"
-    : isNewlyEliminated
-      ? "animate-death-shake"
-      : "";
+    ? (isSuspense ? "animate-suspense-pulse" : "")
+    : (isNewlyEliminated ? "animate-death-shake" : "");
 
   return (
     <div
       className={cn(
-        // Responsive sizing: scales up with viewport
-        "relative overflow-hidden rounded-xl backdrop-blur-md border flex flex-col",
-        "w-20 h-28 sm:w-24 sm:h-32 lg:w-28 lg:h-36 xl:w-32 xl:h-40",
-        "transition-transform duration-300 hover:scale-105",
-        cardTone,
+        // Sized for legibility from across a room — scales up with viewport.
+        "relative flex flex-col overflow-hidden rounded-2xl border-2 backdrop-blur-md",
+        "w-24 h-32 sm:w-28 sm:h-36 lg:w-32 lg:h-44 xl:w-40 xl:h-52",
+        "bg-white/10 border-white/20",
+        "transition-[filter,opacity] duration-700 ease-in-out",
+        !isAlive && "grayscale opacity-55",
         animationClass,
       )}
       role="article"
       aria-label={`${player.name}, ${isAlive ? "active" : "eliminated"}`}
     >
-      {/* Eliminated rubber stamp overlay */}
+      {/* Avatar — fills the top of the card like a photo/portrait */}
+      <div className="relative flex-1">
+        {isImageAvatar ? (
+          <img src={displayValue} alt={player.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-4xl leading-none text-white sm:text-5xl lg:text-6xl xl:text-7xl">
+              {displayValue}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Divider — separates the avatar from the nameplate */}
+      <div className="mx-auto h-px w-[72%] bg-white/20" aria-hidden="true" />
+
+      {/* Nameplate */}
+      <div className="w-full px-1.5 py-2 text-center sm:py-2.5">
+        <span
+          className={cn(
+            "block truncate font-bold leading-tight drop-shadow",
+            "text-xs sm:text-sm lg:text-base xl:text-lg",
+            isAlive ? "text-white" : "text-slate-300",
+          )}
+          title={player.name}
+        >
+          {player.name}
+        </span>
+      </div>
+
+      {/* Elimination treatment — bold "case closed" stamp, readable at a glance */}
       {!isAlive && (
         <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none overflow-hidden">
-          <div className="rotate-[-28deg] border-2 border-rose-500/75 rounded px-1.5 py-0.5 bg-rose-950/40 backdrop-blur-[2px]">
-            <span className="block text-[8px] sm:text-[9px] xl:text-[10px] font-black uppercase tracking-[0.18em] text-rose-400">
-              Eliminated
+          <div className="rotate-[-16deg] rounded-md border-[3px] border-rose-500/80 bg-black/45 px-2.5 py-1 shadow-lg shadow-black/40 sm:px-3.5 sm:py-1.5">
+            <span className="block text-sm font-black uppercase tracking-[0.3em] text-rose-400 sm:text-base lg:text-lg">
+              Out
             </span>
           </div>
         </div>
       )}
-
-      <div className={`absolute top-[75%] left-3 right-3 h-px ${dividerColor}`} />
-      <div className="relative grid h-full grid-rows-[3fr_1fr]">
-        <div className="relative flex items-center justify-center px-2 pt-3 pb-1">
-          <div className={`pointer-events-none absolute inset-0 rounded-t-xl ${topTone}`} />
-          {isImageAvatar ? (
-            <img
-              src={displayValue}
-              alt={player.name}
-              className={cn(
-                "relative z-10 rounded-lg object-cover shadow-lg transition-all duration-500",
-                "h-12 w-12 sm:h-14 sm:w-14 lg:h-14 lg:w-14 xl:h-16 xl:w-16",
-                !isAlive && "grayscale",
-              )}
-            />
-          ) : (
-            <span className={cn(
-              "relative z-10 leading-none drop-shadow transition-all duration-500 text-white",
-              "text-3xl sm:text-3xl lg:text-4xl",
-            )}>
-              {displayValue}
-            </span>
-          )}
-        </div>
-        <div className="relative flex items-center justify-center px-2 pb-2">
-          <div className={`pointer-events-none absolute inset-0 rounded-b-xl ${bottomTone}`} />
-          <span
-            className="relative z-10 w-full text-center font-semibold leading-tight text-white truncate px-1 text-[10px] sm:text-xs xl:text-sm"
-            title={player.name}
-          >
-            {player.name}
-          </span>
-        </div>
-      </div>
     </div>
   );
 });
 PlayerCard.displayName = "PlayerCard";
+
+// ─── Arrangement icons ────────────────────────────────────────────────────────
+
+const CircleSeatsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="8" strokeDasharray="2 3" />
+    <circle cx="12" cy="4" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="19.3" cy="8.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="19.3" cy="15.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="20" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="4.7" cy="15.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="4.7" cy="8.5" r="1.6" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const ClassroomSeatsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3.5" y="4" width="4" height="4" rx="1" />
+    <rect x="10" y="4" width="4" height="4" rx="1" />
+    <rect x="16.5" y="4" width="4" height="4" rx="1" />
+    <rect x="3.5" y="11" width="4" height="4" rx="1" />
+    <rect x="10" y="11" width="4" height="4" rx="1" />
+    <rect x="16.5" y="11" width="4" height="4" rx="1" />
+    <rect x="6.75" y="18" width="4" height="4" rx="1" />
+    <rect x="13.25" y="18" width="4" height="4" rx="1" />
+  </svg>
+);
 
 // ─── Fullscreen icons ─────────────────────────────────────────────────────────
 
@@ -230,13 +246,26 @@ const PublicViewPage = () => {
     }
   }, [socketStatus]);
 
-  const activePlayers = useMemo(
-    () => game?.players.filter((p) => p.public_is_alive) ?? [],
+  // Seats are assigned by sorted player id so every player keeps the same spot
+  // on the stage all game long — eliminated players grey out in place rather
+  // than relocating to a different zone.
+  const seatedPlayers = useMemo(
+    () => [...(game?.players ?? [])].sort((a, b) => a.id - b.id),
     [game?.players]
   );
-  const inactivePlayers = useMemo(
-    () => game?.players.filter((p) => !p.public_is_alive) ?? [],
-    [game?.players]
+
+  const [arrangement, setArrangement] = useState<SeatArrangement>(() => {
+    const stored = window.localStorage.getItem(ARRANGEMENT_STORAGE_KEY);
+    return stored === "classroom" ? "classroom" : "circle";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(ARRANGEMENT_STORAGE_KEY, arrangement);
+  }, [arrangement]);
+
+  const seats = useMemo(
+    () => computeSeats(seatedPlayers.length, arrangement),
+    [seatedPlayers.length, arrangement]
   );
 
   const isDay = game?.current_phase === "day";
@@ -332,8 +361,8 @@ const PublicViewPage = () => {
   if (!game) return null;
 
   const isFinished = game.status === "finished";
-  const aliveCount = activePlayers.length;
-  const eliminatedCount = inactivePlayers.length;
+  const aliveCount = game.players.filter((p) => p.public_is_alive).length;
+  const eliminatedCount = game.players.length - aliveCount;
 
   return (
     <div
@@ -440,6 +469,50 @@ const PublicViewPage = () => {
             </span>
           </div>
 
+          {/* Seating arrangement toggle — switch the stage to match the room */}
+          <div
+            role="group"
+            aria-label="Seating arrangement"
+            className={cn(
+              "flex items-center gap-1 rounded-full border p-1 backdrop-blur-sm",
+              ANIMATION_CONSTANTS.UI_TRANSITION_CSS,
+              isDay
+                ? "bg-yellow-200/15 border-yellow-300/30"
+                : "bg-white/10 border-white/25"
+            )}
+          >
+            {(
+              [
+                { value: "circle" as const, label: "Circle seating", icon: <CircleSeatsIcon /> },
+                { value: "classroom" as const, label: "Classroom seating", icon: <ClassroomSeatsIcon /> },
+              ]
+            ).map((option) => {
+              const isActive = arrangement === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setArrangement(option.value)}
+                  aria-label={option.label}
+                  aria-pressed={isActive}
+                  title={option.label}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-200",
+                    isActive
+                      ? isDay
+                        ? "bg-yellow-100/80 text-yellow-900"
+                        : "bg-white/80 text-slate-900"
+                      : isDay
+                        ? "text-yellow-100/70 hover:text-yellow-100"
+                        : "text-white/60 hover:text-white"
+                  )}
+                >
+                  {option.icon}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Fix #2: distinct SVG icons for enter vs exit fullscreen */}
           <button
             type="button"
@@ -458,65 +531,37 @@ const PublicViewPage = () => {
           </button>
         </div>
 
-        {/* Fix #4/#10: Alive Players — labelled zone, overflow capped */}
-        {activePlayers.length > 0 && (
-          <div
-            className="absolute bottom-6 left-6 flex flex-col items-start gap-2"
-            role="region"
-            aria-label="Active players"
-          >
-            <span
-              className={cn(
-                "text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full",
-                ANIMATION_CONSTANTS.UI_TRANSITION_CSS,
-                isDay ? "text-emerald-900 bg-emerald-300/60" : "text-emerald-200 bg-emerald-600/30"
-              )}
-            >
-              ● Alive ({aliveCount})
-            </span>
-            <div className="flex max-w-2xl flex-wrap-reverse items-end content-end gap-3 max-h-[55vh] overflow-y-auto">
-              {activePlayers.map((player) => (
+        {/* Seated stage — every player keeps a fixed seat all game long;
+            eliminated players grey out in place instead of relocating. */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          role="region"
+          aria-label={`Players, seated ${arrangement === "circle" ? "in a circle" : "classroom-style"}`}
+        >
+          {seatedPlayers.map((player, index) => {
+            const seat = seats[index];
+            if (!seat) return null;
+            const isAlive = player.public_is_alive;
+            return (
+              <div
+                key={player.id}
+                className="absolute transition-[left,top] duration-700 ease-in-out"
+                style={{
+                  left: `${seat.leftPct}%`,
+                  top: `${seat.topPct}%`,
+                  transform: `translate(-50%, -50%) scale(${seat.scale})`,
+                }}
+              >
                 <PlayerCard
-                  key={player.id}
                   player={player}
-                  isAlive={true}
-                  isNewlyEliminated={false}
-                  isSuspense={suspenseActive}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Fix #4/#10: Eliminated Players — labelled zone, overflow capped */}
-        {inactivePlayers.length > 0 && (
-          <div
-            className="absolute bottom-6 right-6 flex flex-col items-end gap-2"
-            role="region"
-            aria-label="Eliminated players"
-          >
-            <span
-              className={cn(
-                "text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full",
-                ANIMATION_CONSTANTS.UI_TRANSITION_CSS,
-                isDay ? "text-rose-900 bg-rose-300/60" : "text-rose-200 bg-rose-600/30"
-              )}
-            >
-              ✕ Eliminated ({eliminatedCount})
-            </span>
-            <div className="flex max-w-2xl flex-wrap-reverse items-end content-end justify-end gap-3 max-h-[55vh] overflow-y-auto">
-              {inactivePlayers.map((player) => (
-                <PlayerCard
-                  key={player.id}
-                  player={player}
-                  isAlive={false}
+                  isAlive={isAlive}
                   isNewlyEliminated={newlyEliminatedIds.has(player.id)}
-                  isSuspense={false}
+                  isSuspense={isAlive && suspenseActive}
                 />
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
