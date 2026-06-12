@@ -200,6 +200,7 @@ export const api = {
   listGames: (status?: GameStatus) =>
     apiFetch<GameSummary[]>(status ? `/games/?status_filter=${status}` : "/games/"),
   getGame: (id: string) => apiFetch<GameDetail>(`/games/${id}`),
+  deleteGame: (id: string) => apiFetch<void>(`/games/${id}`, { method: "DELETE" }),
   getPublicGame: (id: string) => apiFetch<PublicGameDetail>(`/games/${id}/public-view`),
   createGame: (players: CreateGamePlayer[]) =>
     apiFetch<GameDetail>("/games/new", { method: "POST", body: JSON.stringify({ players }) }),

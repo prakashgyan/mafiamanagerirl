@@ -431,3 +431,7 @@ class GameService:
     def list_games(self, user: User, status_filter: Optional[GameStatus]) -> list[schemas.GameRead]:
         games = self.datastore.list_games(user.id, status_filter)
         return [schemas.GameRead.model_validate(game) for game in games]
+
+    def delete_game(self, game_id: str, user: User) -> None:
+        if not self.datastore.delete_game(game_id, user.id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")

@@ -43,6 +43,16 @@ def create_game(
     return game_manager.serialize_for_api()
 
 
+@router.delete("/{game_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+def delete_game(
+    game_id: str,
+    current_user: User = Depends(get_current_user),
+    game_service: GameService = Depends(get_game_service),
+) -> None:
+    logger.bind(game_id=game_id, user_id=current_user.id).debug("Deleting game")
+    game_service.delete_game(game_id, current_user)
+
+
 @router.get("/{game_id}/public-view", response_model=schemas.PublicGameDetail)
 def get_game_public_view(
     game_id: str,

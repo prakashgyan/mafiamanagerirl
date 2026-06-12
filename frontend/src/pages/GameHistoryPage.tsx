@@ -33,6 +33,12 @@ const cardTitle = (game: GameSummary) => {
   return `Round ${game.current_round} · ${game.current_phase === "day" ? "Day" : "Night"}`;
 };
 
+const STATUS_ORDER: Record<GameStatus, number> = {
+  active: 0,
+  pending: 1,
+  finished: 2,
+};
+
 const GameHistoryPage = () => {
   const [allGames, setAllGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,13 +60,16 @@ const GameHistoryPage = () => {
     void load();
   }, []);
 
-  const filteredGames = useMemo(
-    () =>
-      statusFilter === "all"
-        ? allGames
-        : allGames.filter((g) => g.status === statusFilter),
-    [allGames, statusFilter]
-  );
+  const filteredGames = useMemo(() => {
+    const games = statusFilter === "all" ? allGames : allGames.filter((g) => g.status === statusFilter);
+    return [...games].sort((a, b) => {
+      const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      if (statusDiff !== 0) return statusDiff;
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [allGames, statusFilter]);
 
   const totals = useMemo(
     () => ({
@@ -79,6 +88,22 @@ const GameHistoryPage = () => {
       navigate(`/games/${game.id}/manage`);
     } else {
       navigate(`/games/${game.id}/over`);
+    }
+  };
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  const handleDeleteGame = async (game: GameSummary) => {
+    setDeletingId(game.id);
+    try {
+      await api.deleteGame(game.id);
+      setAllGames((prev) => prev.filter((g) => g.id !== game.id));
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to delete game"));
+    } finally {
+      setDeletingId(null);
+      setConfirmingId(null);
     }
   };
 
@@ -170,7 +195,7 @@ const GameHistoryPage = () => {
             />
           )}
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
             {filteredGames.map((game) => {
               const date = formatDate(game.created_at);
               return (
@@ -226,6 +251,34 @@ const GameHistoryPage = () => {
                         className="flex-1 rounded-xl border border-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-sky-400 hover:text-sky-200"
                       >
                         Public View
+                      </button>
+                    )}
+                    {confirmingId === game.id ? (
+                      <div className="flex w-full items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                        <span className="flex-1">Delete this game?</span>
+                        <button
+                          onClick={() => handleDeleteGame(game)}
+                          disabled={deletingId === game.id}
+                          className="rounded-lg bg-rose-500 px-3 py-1 text-xs font-semibold text-slate-900 transition hover:bg-rose-400 disabled:opacity-60"
+                        >
+                          {deletingId === game.id ? "Deleting…" : "Confirm"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmingId(null)}
+                          disabled={deletingId === game.id}
+                          className="rounded-lg border border-slate-700/60 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmingId(game.id)}
+                        className="rounded-xl border border-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"
+                        aria-label="Delete game"
+                        title="Delete game"
+                      >
+                        🗑️
                       </button>
                     )}
                   </div>

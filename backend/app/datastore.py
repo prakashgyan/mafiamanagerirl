@@ -51,6 +51,7 @@ class Datastore(Protocol):
         timestamp: datetime | None = None,
     ) -> tuple[Game | None, Log | None]: ...
     def list_games(self, host_id: int, status_filter: GameStatus | None = None) -> List[Game]: ...
+    def delete_game(self, game_id: str, host_id: int) -> bool: ...
     def add_player(
         self,
         game_id: str,
@@ -226,6 +227,20 @@ class PostgresDataStore:
             stmt = stmt.where(GameDb.status == status_filter)
         games_db = self.session.execute(stmt).scalars().all()
         return [Game.model_validate(g) for g in games_db]
+
+    @log_call("datastore.postgres")
+    def delete_game(self, game_id: str, host_id: int) -> bool:
+        game_db = self.session.execute(
+            select(GameDb).where(GameDb.id == game_id, GameDb.host_id == host_id)
+        ).scalar_one_or_none()
+        if not game_db:
+            return False
+        self.session.execute(delete(PlayerDb).where(PlayerDb.game_id == game_id))
+        self.session.execute(delete(LogDb).where(LogDb.game_id == game_id))
+        self.session.delete(game_db)
+        self.session.commit()
+        self._invalidate_game_cache(game_id)
+        return True
 
     @log_call("datastore.postgres")
     def add_player(
@@ -490,6 +505,17 @@ class InMemoryDataStore:
         if status_filter is not None:
             games = [game for game in games if game.status == status_filter]
         return sorted(games, key=lambda g: g.id, reverse=True)
+
+    @log_call("datastore.memory")
+    def delete_game(self, game_id: str, host_id: int) -> bool:
+        game = self._games.get(game_id)
+        if not game or game.host_id != host_id:
+            return False
+        self._players = {pid: p for pid, p in self._players.items() if p.game_id != game_id}
+        self._logs = {lid: l for lid, l in self._logs.items() if l.game_id != game_id}
+        del self._games[game_id]
+        self._invalidate_game_cache(game_id)
+        return True
 
     @log_call("datastore.memory")
     def add_player(self, game_id: str, *, name: str, avatar: str | None, friend_id: int | None) -> Player:
