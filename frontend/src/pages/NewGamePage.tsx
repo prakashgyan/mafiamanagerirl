@@ -199,6 +199,7 @@ const NewGamePage = () => {
 
     try {
       const game = await api.createGame(playersPayload);
+      localStorage.setItem(`roleCounts:${game.id}`, JSON.stringify(roleCounts));
       navigate(`/games/${game.id}/assign`, { state: { roleCounts } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create game");

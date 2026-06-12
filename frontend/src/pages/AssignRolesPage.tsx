@@ -422,13 +422,31 @@ const AssignRolesPage = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [targetPickerFor, setTargetPickerFor] = useState<Player | null>(null);
 
-  const counts = useMemo<RoleCounts>(
-    () => ({
+  const counts = useMemo<RoleCounts>(() => {
+    let stored: Partial<RoleCounts> | undefined;
+    if (!state?.roleCounts && gameId) {
+      const raw = localStorage.getItem(`roleCounts:${gameId}`);
+      if (raw) {
+        try {
+          stored = JSON.parse(raw);
+        } catch {
+          stored = undefined;
+        }
+      }
+    }
+    return {
       ...DEFAULT_COUNTS,
+      ...(stored ?? {}),
       ...(state?.roleCounts ?? {}),
-    }),
-    [state?.roleCounts]
-  );
+    };
+  }, [state?.roleCounts, gameId]);
+
+  // Persist role counts so they survive navigating away and resuming setup later.
+  useEffect(() => {
+    if (state?.roleCounts && gameId) {
+      localStorage.setItem(`roleCounts:${gameId}`, JSON.stringify(state.roleCounts));
+    }
+  }, [state?.roleCounts, gameId]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -550,6 +568,7 @@ const AssignRolesPage = () => {
       }));
       await api.assignRoles(game.id, assignmentsPayload);
       const updated = await api.startGame(game.id);
+      localStorage.removeItem(`roleCounts:${game.id}`);
       navigate(`/games/${updated.id}/manage`, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start game");
