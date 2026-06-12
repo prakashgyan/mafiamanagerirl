@@ -195,93 +195,92 @@ const GameHistoryPage = () => {
             />
           )}
 
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+          <div className="flex w-full flex-col gap-3">
             {filteredGames.map((game) => {
               const date = formatDate(game.created_at);
               return (
                 <div
                   key={game.id}
-                  className="group flex h-full flex-col justify-between rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/40 transition hover:border-slate-700 hover:bg-slate-900/90"
+                  className="group flex w-full flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-5 py-3 shadow-lg shadow-slate-950/30 transition hover:border-slate-700 hover:bg-slate-900/90 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  {/* Card header — clickable */}
+                  {/* Info — clickable */}
                   <button
-                    className="w-full text-left"
+                    className="flex flex-1 items-center gap-4 text-left"
                     onClick={() => handleNavigateToGame(game)}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-mono text-slate-500 tracking-wider">#{game.id}</p>
-                        <h3 className="mt-0.5 text-xl font-semibold text-white group-hover:text-sky-200 transition">
+                    <GameStatusBadge status={game.status} className="shrink-0 px-2.5 py-1 text-[0.65rem]" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <h3 className="text-base font-semibold text-white group-hover:text-sky-200 transition">
                           {cardTitle(game)}
                         </h3>
-                        {date && <p className="mt-1 text-xs text-slate-500">{date}</p>}
+                        <p className="text-xs font-mono text-slate-500 tracking-wider">#{game.id}</p>
+                        {date && <p className="text-xs text-slate-500">{date}</p>}
                       </div>
-                      <GameStatusBadge status={game.status} className="shrink-0 px-3 py-1 text-xs" />
-                    </div>
-
-                    <div className="mt-4 space-y-1.5 text-sm text-slate-300">
-                      {game.status !== "pending" && (
-                        <p>
-                          {phaseIcon[game.current_phase]}{" "}
-                          <span className="font-semibold text-white">
-                            {game.current_phase === "day" ? "Day" : "Night"} · Round {game.current_round}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-slate-300">
+                        {game.status !== "pending" && (
+                          <span>
+                            {phaseIcon[game.current_phase]}{" "}
+                            <span className="font-semibold text-white">
+                              {game.current_phase === "day" ? "Day" : "Night"} · Round {game.current_round}
+                            </span>
                           </span>
-                        </p>
-                      )}
-                      {game.status === "finished" && (
-                        <p>
-                          🏆 Winning team:{" "}
-                          <span className="font-semibold text-emerald-200">{game.winning_team ?? "Undeclared"}</span>
-                        </p>
-                      )}
+                        )}
+                        {game.status === "finished" && (
+                          <span>
+                            🏆{" "}
+                            <span className="font-semibold text-emerald-200">{game.winning_team ?? "Undeclared"}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
 
                   {/* Action buttons */}
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button
-                      onClick={() => handleNavigateToGame(game)}
-                      className="flex-1 rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-sky-500/30 transition hover:bg-sky-400"
-                    >
-                      {game.status === "finished" ? "View Summary" : game.status === "pending" ? "Set Up Game" : "Open Game"}
-                    </button>
-                    {game.status !== "pending" && (
+                  {confirmingId === game.id ? (
+                    <div className="flex shrink-0 items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-sm text-rose-200">
+                      <span className="whitespace-nowrap">Delete?</span>
                       <button
-                        onClick={() => navigate(`/games/${game.id}/public`)}
-                        className="flex-1 rounded-xl border border-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-sky-400 hover:text-sky-200"
+                        onClick={() => handleDeleteGame(game)}
+                        disabled={deletingId === game.id}
+                        className="rounded-lg bg-rose-500 px-3 py-1 text-xs font-semibold text-slate-900 transition hover:bg-rose-400 disabled:opacity-60"
                       >
-                        Public View
+                        {deletingId === game.id ? "Deleting…" : "Confirm"}
                       </button>
-                    )}
-                    {confirmingId === game.id ? (
-                      <div className="flex w-full items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                        <span className="flex-1">Delete this game?</span>
+                      <button
+                        onClick={() => setConfirmingId(null)}
+                        disabled={deletingId === game.id}
+                        className="rounded-lg border border-slate-700/60 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        onClick={() => handleNavigateToGame(game)}
+                        className="rounded-xl bg-sky-500 px-3 py-1.5 text-sm font-semibold text-slate-900 shadow shadow-sky-500/30 transition hover:bg-sky-400"
+                      >
+                        {game.status === "finished" ? "View Summary" : game.status === "pending" ? "Set Up Game" : "Open Game"}
+                      </button>
+                      {game.status !== "pending" && (
                         <button
-                          onClick={() => handleDeleteGame(game)}
-                          disabled={deletingId === game.id}
-                          className="rounded-lg bg-rose-500 px-3 py-1 text-xs font-semibold text-slate-900 transition hover:bg-rose-400 disabled:opacity-60"
+                          onClick={() => navigate(`/games/${game.id}/public`)}
+                          className="rounded-xl border border-slate-700/60 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:border-sky-400 hover:text-sky-200"
                         >
-                          {deletingId === game.id ? "Deleting…" : "Confirm"}
+                          Public View
                         </button>
-                        <button
-                          onClick={() => setConfirmingId(null)}
-                          disabled={deletingId === game.id}
-                          className="rounded-lg border border-slate-700/60 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
+                      )}
                       <button
                         onClick={() => setConfirmingId(game.id)}
-                        className="rounded-xl border border-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"
+                        className="rounded-xl border border-slate-700/60 px-3 py-1.5 text-sm font-semibold text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"
                         aria-label="Delete game"
                         title="Delete game"
                       >
                         🗑️
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
