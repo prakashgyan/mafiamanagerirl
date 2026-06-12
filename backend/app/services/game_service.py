@@ -223,10 +223,10 @@ class GameManager:
         target_player = self.require_target(action)
         updated_player = self._update_player_alive(target_player, False, force_public_sync=True)
         message = action.note or f"{updated_player.name} was voted out."
-        jester_win = resolve_vote_elimination(updated_player)
-        if jester_win:
+        instant_win = resolve_vote_elimination(updated_player, self.bundle.players)
+        if instant_win:
             updated_game = self.datastore.update_game(
-                self.id, status=GameStatus.FINISHED, winning_team=jester_win
+                self.id, status=GameStatus.FINISHED, winning_team=instant_win
             )
             if updated_game:
                 self.sync_game_state(updated_game)

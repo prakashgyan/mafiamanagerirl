@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /profile
+Disallow: /friends
+Disallow: /games/
+Allow: /
+Allow: /support

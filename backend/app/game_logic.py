@@ -27,10 +27,17 @@ def count_non_mafia(players: Iterable[Player]) -> int:
     )
 
 
-def resolve_vote_elimination(player: Player) -> str | None:
+def resolve_vote_elimination(player: Player, players: Iterable[Player]) -> str | None:
     role = (player.role or "").lower()
     if role == "jester":
         return "Jester"
+    for other in players:
+        if (
+            other.is_alive
+            and (other.role or "").lower() == "executioner"
+            and other.target_player_id == player.id
+        ):
+            return "Executioner"
     return None
 
 
