@@ -203,7 +203,7 @@ export const api = {
   getPublicGame: (id: string) => apiFetch<PublicGameDetail>(`/games/${id}/public-view`),
   createGame: (players: CreateGamePlayer[]) =>
     apiFetch<GameDetail>("/games/new", { method: "POST", body: JSON.stringify({ players }) }),
-  assignRoles: (gameId: string, assignments: { player_id: number; role: string }[]) =>
+  assignRoles: (gameId: string, assignments: { player_id: number; role: string; target_player_id?: number | null }[]) =>
     apiFetch<GameDetail>(`/games/${gameId}/assign_roles`, {
       method: "POST",
       body: JSON.stringify({ assignments }),

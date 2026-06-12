@@ -36,13 +36,16 @@ type RoleColumnProps = {
   onDrop: (player: Player) => void;
   onRemove: (playerId: number) => void;
   isMobile?: boolean;
+  targets?: Record<number, number | null>;
+  playerNameById?: Record<number, string>;
+  onSetTarget?: (player: Player) => void;
 };
 
-const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile }: RoleColumnProps) => {
+const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile, targets, playerNameById, onSetTarget }: RoleColumnProps) => {
   const [{ isOver, canDrop }, dropRef] = useDrop<DragPayload, void, { isOver: boolean; canDrop: boolean }>(
     {
       accept: DND_TYPE,
-      canDrop: () => players.length < capacity || capacity === 0,
+      canDrop: () => players.length < capacity,
       drop: (item: DragPayload) => onDrop(item.player),
       collect: (monitor: DropTargetMonitor<DragPayload, void>) => ({
         isOver: monitor.isOver(),
@@ -53,7 +56,7 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile }: Rol
   );
 
   const meta = ROLE_META[role];
-  const full = capacity !== 0 && players.length >= capacity;
+  const full = players.length >= capacity;
 
   return (
     <div
@@ -72,7 +75,7 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile }: Rol
           <div>
             <h3 className="text-sm font-semibold text-white">{role}</h3>
             <p className="text-[0.65rem] uppercase tracking-wide text-slate-500">
-              {capacity === 0 ? "Unlimited" : `${capacity} slot${capacity !== 1 ? "s" : ""}`}
+              {capacity} slot{capacity !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -81,12 +84,22 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile }: Rol
             full ? "border border-amber-400/60 bg-amber-500/10 text-amber-200" : "border border-slate-700/60 bg-slate-900/80 text-slate-300"
           }`}
         >
-          {players.length}/{capacity === 0 ? "∞" : capacity}
+          {players.length}/{capacity}
         </span>
       </header>
       <div className="space-y-2">
         {players.map((player) => (
-          <AssignedPlayerCard key={player.id} player={player} onRemove={() => onRemove(player.id)} />
+          <AssignedPlayerCard
+            key={player.id}
+            player={player}
+            onRemove={() => onRemove(player.id)}
+            targetName={
+              role === "Executioner" && targets?.[player.id] != null
+                ? playerNameById?.[targets[player.id] as number]
+                : undefined
+            }
+            onSetTarget={role === "Executioner" && onSetTarget ? () => onSetTarget(player) : undefined}
+          />
         ))}
         {players.length === 0 && (
           <p className="rounded-xl border border-dashed border-slate-800 bg-slate-950/70 px-3 py-3 text-center text-xs text-slate-500">
@@ -101,9 +114,11 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile }: Rol
 type AssignedPlayerProps = {
   player: Player;
   onRemove: () => void;
+  targetName?: string;
+  onSetTarget?: () => void;
 };
 
-const AssignedPlayerCard: FC<AssignedPlayerProps> = ({ player, onRemove }: AssignedPlayerProps) => (
+const AssignedPlayerCard: FC<AssignedPlayerProps> = ({ player, onRemove, targetName, onSetTarget }: AssignedPlayerProps) => (
   <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2">
     <div className="flex items-center gap-3">
       <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
@@ -112,13 +127,28 @@ const AssignedPlayerCard: FC<AssignedPlayerProps> = ({ player, onRemove }: Assig
         <span className="text-[0.65rem] uppercase tracking-wide text-slate-500">{player.role ?? "Unassigned"}</span>
       </div>
     </div>
-    <button
-      onClick={onRemove}
-      aria-label={`Remove ${player.name} from role`}
-      className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-rose-200 transition hover:bg-rose-500/20"
-    >
-      <span aria-hidden>✕</span>
-    </button>
+    <div className="flex items-center gap-2">
+      {onSetTarget && (
+        <button
+          onClick={onSetTarget}
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide transition ${
+            targetName
+              ? "bg-fuchsia-500/10 text-fuchsia-200 hover:bg-fuchsia-500/20"
+              : "bg-slate-700/60 text-slate-300 hover:bg-slate-700"
+          }`}
+        >
+          <span aria-hidden>🎯</span>
+          {targetName ?? "Set target"}
+        </button>
+      )}
+      <button
+        onClick={onRemove}
+        aria-label={`Remove ${player.name} from role`}
+        className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-rose-200 transition hover:bg-rose-500/20"
+      >
+        <span aria-hidden>✕</span>
+      </button>
+    </div>
   </div>
 );
 
@@ -221,7 +251,7 @@ const RolePickerSheet = ({ player, playersByRole, counts, onAssign, onClose }: R
             const meta = ROLE_META[role];
             const filled = playersByRole[role].length;
             const cap = counts[role];
-            const full = cap !== 0 && filled >= cap;
+            const full = filled >= cap;
 
             return (
               <button
@@ -239,19 +269,100 @@ const RolePickerSheet = ({ player, playersByRole, counts, onAssign, onClose }: R
                   <div>
                     <p className="text-sm font-semibold text-white">{role}</p>
                     <p className="text-[0.65rem] uppercase tracking-wide text-slate-500">
-                      {cap === 0 ? "Unlimited" : `${cap} slot${cap !== 1 ? "s" : ""}`}
+                      {cap} slot{cap !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </div>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                   full ? "bg-amber-500/10 text-amber-300" : "bg-slate-700/80 text-slate-300"
                 }`}>
-                  {filled}/{cap === 0 ? "∞" : cap}
+                  {filled}/{cap}
                   {full && " · Full"}
                 </span>
               </button>
             );
           })}
+        </div>
+      </div>
+    </>
+  );
+};
+
+type TargetPickerSheetProps = {
+  executioner: Player;
+  candidates: Player[];
+  currentTargetId?: number | null;
+  onSelect: (targetId: number | null) => void;
+  onClose: () => void;
+};
+
+const TargetPickerSheet = ({ executioner, candidates, currentTargetId, onSelect, onClose }: TargetPickerSheetProps) => {
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        role="dialog"
+        aria-modal
+        aria-label={`Choose target for ${executioner.name}`}
+        className="fixed bottom-0 left-0 right-0 z-50 max-h-[75vh] overflow-y-auto rounded-t-3xl border-t border-white/10 bg-slate-900 px-5 pt-4 shadow-2xl"
+        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+      >
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-slate-700" />
+
+        <div className="mb-4 flex items-center gap-3 border-b border-slate-800 pb-4">
+          <PlayerAvatar value={executioner.avatar} fallbackLabel={executioner.name} size="sm" />
+          <div>
+            <p className="text-sm font-semibold text-white">{executioner.name}</p>
+            <p className="text-xs text-slate-500">🎯 Choose who they must get voted out</p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="ml-auto rounded-full bg-slate-800 p-1.5 text-slate-400 transition hover:text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-2.5 pb-2">
+          {currentTargetId != null && (
+            <button
+              onClick={() => { onSelect(null); onClose(); }}
+              className="flex w-full items-center justify-center rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-rose-200 transition hover:bg-rose-500/20"
+            >
+              Clear target
+            </button>
+          )}
+          {candidates.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/70 px-4 py-4 text-center text-xs text-slate-500">
+              No other players to target.
+            </p>
+          ) : (
+            candidates.map((player) => {
+              const selected = player.id === currentTargetId;
+              return (
+                <button
+                  key={player.id}
+                  onClick={() => { onSelect(player.id); onClose(); }}
+                  className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
+                    selected
+                      ? "border-fuchsia-400/60 bg-fuchsia-500/10"
+                      : "border-slate-700 bg-slate-800/60 active:scale-[0.98] active:border-slate-500"
+                  }`}
+                >
+                  <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
+                  <span className="text-sm font-semibold text-white">{player.name}</span>
+                  {selected && <span className="ml-auto text-fuchsia-300" aria-hidden>🎯</span>}
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
     </>
@@ -265,9 +376,11 @@ const AssignRolesPage = () => {
   const isMobile = useIsCompact("lg");
   const [game, setGame] = useState<GameDetail | null>(null);
   const [assignments, setAssignments] = useState<Record<number, RoleName>>({});
+  const [targets, setTargets] = useState<Record<number, number | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [targetPickerFor, setTargetPickerFor] = useState<Player | null>(null);
 
   const counts = useMemo<RoleCounts>(
     () => ({
@@ -290,6 +403,13 @@ const AssignRolesPage = () => {
           return acc;
         }, {});
         setAssignments(preAssigned);
+        const preTargets = data.players.reduce<Record<number, number | null>>((acc, player) => {
+          if (player.target_player_id != null) {
+            acc[player.id] = player.target_player_id;
+          }
+          return acc;
+        }, {});
+        setTargets(preTargets);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load game");
       } finally {
@@ -324,6 +444,14 @@ const AssignRolesPage = () => {
     return game.players.filter((player: Player) => !assignments[player.id]);
   }, [assignments, game]);
 
+  const playerNameById = useMemo(() => {
+    if (!game) return {};
+    return game.players.reduce<Record<number, string>>((acc, player) => {
+      acc[player.id] = player.name;
+      return acc;
+    }, {});
+  }, [game]);
+
   const totalSlots = useMemo(
     () => ROLE_KEYS.reduce((sum, role) => sum + (counts[role] ?? 0), 0),
     [counts]
@@ -345,6 +473,15 @@ const AssignRolesPage = () => {
       delete updated[playerId];
       return updated;
     });
+    setTargets((prev) => {
+      const updated = { ...prev };
+      delete updated[playerId];
+      return updated;
+    });
+  };
+
+  const handleSetTarget = (executionerId: number, targetId: number | null) => {
+    setTargets((prev) => ({ ...prev, [executionerId]: targetId }));
   };
 
   const isComplete = useMemo(() => {
@@ -352,7 +489,7 @@ const AssignRolesPage = () => {
     if (Object.keys(assignments).length !== game.players.length) return false;
     return ROLE_KEYS.every((role) => {
       const assignedCount = Object.values(assignments).filter((assigned) => assigned === role).length;
-      return counts[role] === 0 || assignedCount === counts[role];
+      return assignedCount === counts[role];
     });
   }, [assignments, counts, game]);
 
@@ -362,6 +499,7 @@ const AssignRolesPage = () => {
       const assignmentsPayload = Object.entries(assignments).map(([playerId, roleValue]) => ({
         player_id: Number(playerId),
         role: roleValue,
+        target_player_id: roleValue === "Executioner" ? targets[Number(playerId)] ?? null : null,
       }));
       await api.assignRoles(game.id, assignmentsPayload);
       const updated = await api.startGame(game.id);
@@ -521,6 +659,9 @@ const AssignRolesPage = () => {
                     onDrop={(player) => handleDrop(player, role)}
                     onRemove={handleRemove}
                     isMobile={isMobile}
+                    targets={targets}
+                    playerNameById={playerNameById}
+                    onSetTarget={(player) => setTargetPickerFor(player)}
                   />
                 ))}
               </div>
@@ -536,6 +677,16 @@ const AssignRolesPage = () => {
           counts={counts}
           onAssign={(role) => handleDrop(selectedPlayer, role)}
           onClose={() => setSelectedPlayer(null)}
+        />
+      )}
+
+      {targetPickerFor && (
+        <TargetPickerSheet
+          executioner={targetPickerFor}
+          candidates={game.players.filter((p) => p.id !== targetPickerFor.id)}
+          currentTargetId={targets[targetPickerFor.id]}
+          onSelect={(targetId) => handleSetTarget(targetPickerFor.id, targetId)}
+          onClose={() => setTargetPickerFor(null)}
         />
       )}
 

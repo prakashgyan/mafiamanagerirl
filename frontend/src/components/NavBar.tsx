@@ -46,8 +46,8 @@ const NavBar = () => {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 rounded-lg border border-[#f96854]/30 bg-[#f96854]/10 px-3 py-1.5 text-xs text-[#f96854] transition hover:border-[#f96854]/50 hover:bg-[#f96854]/15"
           >
-            <span aria-hidden>❤️</span>
-            Support
+            <span aria-hidden>🐛</span>
+            Report issue
           </a>
           {/* Avatar button */}
           <div className="relative" ref={menuRef}>

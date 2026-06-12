@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import PlayerAvatar from "../components/PlayerAvatar";
 import { api, CreateGamePlayer, Friend } from "../services/api";
 import { getRandomAnimalAvatar, normalizeAvatar } from "../utils/avatarOptions";
-import { ROLE_KEYS, RoleCounts, DEFAULT_ROLE_COUNTS, ROLE_DESCRIPTIONS } from "../constants/roles";
+import { ROLE_KEYS, RoleCounts, DEFAULT_ROLE_COUNTS, ROLE_DESCRIPTIONS, ROLE_ICONS } from "../constants/roles";
 
 const defaultRoleCounts: RoleCounts = DEFAULT_ROLE_COUNTS;
 
@@ -215,13 +215,6 @@ const NewGamePage = () => {
     }
   };
 
-  const ROLE_ICONS: Record<string, string> = {
-    Mafia: "🔫",
-    Detective: "🔍",
-    Doctor: "💊",
-    Villager: "🏘️",
-    Jester: "🃏",
-  };
 
   return (
     <div className="relative min-h-screen text-slate-100">
@@ -447,7 +440,7 @@ const NewGamePage = () => {
                   key={role}
                   className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-3 transition hover:border-slate-700"
                 >
-                  <span className="text-xl" aria-hidden>{ROLE_ICONS[role]}</span>
+                  <span className="text-xl" aria-hidden>{ROLE_ICONS[role.toLowerCase()]}</span>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-white">{role}</p>
                     <p className="text-xs text-slate-400">{ROLE_DESCRIPTIONS[role]}</p>
