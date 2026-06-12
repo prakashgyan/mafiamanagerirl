@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import PlayerAvatar from "../components/PlayerAvatar";
 import { api, CreateGamePlayer, Friend } from "../services/api";
 import { getRandomAnimalAvatar, normalizeAvatar } from "../utils/avatarOptions";
-import { ROLE_KEYS, RoleCounts, DEFAULT_ROLE_COUNTS } from "../constants/roles";
+import { ROLE_KEYS, RoleCounts, DEFAULT_ROLE_COUNTS, ROLE_DESCRIPTIONS } from "../constants/roles";
 
 const defaultRoleCounts: RoleCounts = DEFAULT_ROLE_COUNTS;
 
@@ -448,7 +448,10 @@ const NewGamePage = () => {
                   className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-3 transition hover:border-slate-700"
                 >
                   <span className="text-xl" aria-hidden>{ROLE_ICONS[role]}</span>
-                  <span className="flex-1 text-sm font-semibold text-white">{role}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-white">{role}</p>
+                    <p className="text-xs text-slate-400">{ROLE_DESCRIPTIONS[role]}</p>
+                  </div>
                   <div className="flex items-center gap-3" role="group" aria-label={`${role} count`}>
                     <button
                       type="button"

@@ -38,3 +38,14 @@ export const ROLE_ICONS: Record<string, string> = {
   survivor: "🛟",
   executioner: "🎯",
 };
+
+/** Short description of each role's win condition / ability. */
+export const ROLE_DESCRIPTIONS: Record<RoleName, string> = {
+  Mafia: "Eliminates a player each night. Wins when the Mafia equals or outnumbers the rest.",
+  Detective: "Investigates a player's role each night to help the town find the Mafia.",
+  Doctor: "Protects one player from being killed each night.",
+  Villager: "No special ability. Votes to find and eliminate the Mafia.",
+  Jester: "Wins instantly if voted out by the town during the day.",
+  Survivor: "Has no special ability. Wins by simply staying alive until the game ends.",
+  Executioner: "Wins if their secretly assigned target is voted out by the town.",
+};
