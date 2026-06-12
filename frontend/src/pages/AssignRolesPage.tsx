@@ -33,15 +33,17 @@ type RoleColumnProps = {
   role: RoleName;
   capacity: number;
   players: Player[];
+  allPlayers: Player[];
   onDrop: (player: Player) => void;
   onRemove: (playerId: number) => void;
   isMobile?: boolean;
   targets?: Record<number, number | null>;
   playerNameById?: Record<number, string>;
   onSetTarget?: (player: Player) => void;
+  onSelectTarget?: (executionerId: number, targetId: number | null) => void;
 };
 
-const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile, targets, playerNameById, onSetTarget }: RoleColumnProps) => {
+const RoleColumn = ({ role, capacity, players, allPlayers, onDrop, onRemove, isMobile, targets, playerNameById, onSetTarget, onSelectTarget }: RoleColumnProps) => {
   const [{ isOver, canDrop }, dropRef] = useDrop<DragPayload, void, { isOver: boolean; canDrop: boolean }>(
     {
       accept: DND_TYPE,
@@ -93,12 +95,16 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile, targe
             key={player.id}
             player={player}
             onRemove={() => onRemove(player.id)}
+            isMobile={isMobile}
             targetName={
               role === "Executioner" && targets?.[player.id] != null
                 ? playerNameById?.[targets[player.id] as number]
                 : undefined
             }
             onSetTarget={role === "Executioner" && onSetTarget ? () => onSetTarget(player) : undefined}
+            targetCandidates={role === "Executioner" ? allPlayers.filter((p) => p.id !== player.id) : undefined}
+            currentTargetId={role === "Executioner" ? targets?.[player.id] ?? null : undefined}
+            onSelectTarget={role === "Executioner" && onSelectTarget ? (targetId) => onSelectTarget(player.id, targetId) : undefined}
           />
         ))}
         {players.length === 0 && (
@@ -114,41 +120,75 @@ const RoleColumn = ({ role, capacity, players, onDrop, onRemove, isMobile, targe
 type AssignedPlayerProps = {
   player: Player;
   onRemove: () => void;
+  isMobile?: boolean;
   targetName?: string;
   onSetTarget?: () => void;
+  targetCandidates?: Player[];
+  currentTargetId?: number | null;
+  onSelectTarget?: (targetId: number | null) => void;
 };
 
-const AssignedPlayerCard: FC<AssignedPlayerProps> = ({ player, onRemove, targetName, onSetTarget }: AssignedPlayerProps) => (
-  <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2">
-    <div className="flex items-center gap-3">
-      <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
-      <div className="flex flex-col">
-        <span className="text-sm font-semibold text-slate-100">{player.name}</span>
-        <span className="text-[0.65rem] uppercase tracking-wide text-slate-500">{player.role ?? "Unassigned"}</span>
+const AssignedPlayerCard: FC<AssignedPlayerProps> = ({
+  player,
+  onRemove,
+  isMobile,
+  targetName,
+  onSetTarget,
+  targetCandidates,
+  currentTargetId,
+  onSelectTarget,
+}: AssignedPlayerProps) => (
+  <div className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <PlayerAvatar value={player.avatar} fallbackLabel={player.name} size="sm" />
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold text-slate-100">{player.name}</span>
+          <span className="text-[0.65rem] uppercase tracking-wide text-slate-500">{player.role ?? "Unassigned"}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {isMobile && onSetTarget && (
+          <button
+            onClick={onSetTarget}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide transition ${
+              targetName
+                ? "bg-fuchsia-500/10 text-fuchsia-200 hover:bg-fuchsia-500/20"
+                : "bg-slate-700/60 text-slate-300 hover:bg-slate-700"
+            }`}
+          >
+            <span aria-hidden>🎯</span>
+            {targetName ?? "Set target"}
+          </button>
+        )}
+        <button
+          onClick={onRemove}
+          aria-label={`Remove ${player.name} from role`}
+          className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-rose-200 transition hover:bg-rose-500/20"
+        >
+          <span aria-hidden>✕</span>
+        </button>
       </div>
     </div>
-    <div className="flex items-center gap-2">
-      {onSetTarget && (
-        <button
-          onClick={onSetTarget}
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide transition ${
-            targetName
-              ? "bg-fuchsia-500/10 text-fuchsia-200 hover:bg-fuchsia-500/20"
-              : "bg-slate-700/60 text-slate-300 hover:bg-slate-700"
+    {!isMobile && targetCandidates && onSelectTarget && (
+      <label className="flex items-center gap-2 text-[0.65rem] uppercase tracking-wide text-slate-500">
+        <span aria-hidden>🎯</span>
+        <select
+          value={currentTargetId ?? ""}
+          onChange={(e) => onSelectTarget(e.target.value ? Number(e.target.value) : null)}
+          className={`flex-1 rounded-lg border bg-slate-950/80 px-2 py-1 text-xs normal-case focus:outline-none focus:ring-1 focus:ring-fuchsia-400/60 ${
+            currentTargetId != null ? "border-fuchsia-500/40 text-fuchsia-200" : "border-slate-700 text-slate-300"
           }`}
         >
-          <span aria-hidden>🎯</span>
-          {targetName ?? "Set target"}
-        </button>
-      )}
-      <button
-        onClick={onRemove}
-        aria-label={`Remove ${player.name} from role`}
-        className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-rose-200 transition hover:bg-rose-500/20"
-      >
-        <span aria-hidden>✕</span>
-      </button>
-    </div>
+          <option value="">Select target…</option>
+          {targetCandidates.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>
+              {candidate.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    )}
   </div>
 );
 
@@ -484,14 +524,21 @@ const AssignRolesPage = () => {
     setTargets((prev) => ({ ...prev, [executionerId]: targetId }));
   };
 
+  const missingExecutionerTargets = useMemo(() => {
+    return Object.entries(assignments).filter(
+      ([playerId, role]) => role === "Executioner" && targets[Number(playerId)] == null
+    ).length;
+  }, [assignments, targets]);
+
   const isComplete = useMemo(() => {
     if (!game) return false;
     if (Object.keys(assignments).length !== game.players.length) return false;
+    if (missingExecutionerTargets > 0) return false;
     return ROLE_KEYS.every((role) => {
       const assignedCount = Object.values(assignments).filter((assigned) => assigned === role).length;
       return assignedCount === counts[role];
     });
-  }, [assignments, counts, game]);
+  }, [assignments, counts, game, missingExecutionerTargets]);
 
   const handleStartGame = async () => {
     if (!game) return;
@@ -656,12 +703,14 @@ const AssignRolesPage = () => {
                     role={role}
                     capacity={counts[role]}
                     players={playersByRole[role]}
+                    allPlayers={game.players}
                     onDrop={(player) => handleDrop(player, role)}
                     onRemove={handleRemove}
                     isMobile={isMobile}
                     targets={targets}
                     playerNameById={playerNameById}
                     onSetTarget={(player) => setTargetPickerFor(player)}
+                    onSelectTarget={handleSetTarget}
                   />
                 ))}
               </div>
@@ -688,6 +737,15 @@ const AssignRolesPage = () => {
           onSelect={(targetId) => handleSetTarget(targetPickerFor.id, targetId)}
           onClose={() => setTargetPickerFor(null)}
         />
+      )}
+
+      {!isComplete && assignedPlayersCount === game.players.length && missingExecutionerTargets > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-center gap-2 border-t border-fuchsia-500/30 bg-slate-950/90 px-6 py-3 text-center backdrop-blur-xl">
+          <span aria-hidden>🎯</span>
+          <p className="text-sm font-semibold text-fuchsia-200">
+            Set a target for {missingExecutionerTargets === 1 ? "the Executioner" : `all ${missingExecutionerTargets} Executioners`} before starting.
+          </p>
+        </div>
       )}
 
       {isComplete && (
