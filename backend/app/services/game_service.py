@@ -177,8 +177,11 @@ class GameManager:
             player = self.player_map.get(assignment.player_id)
             if not player:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid player {assignment.player_id}")
-            self.datastore.update_player(player.id, self.id, role=assignment.role)
-            player.role = assignment.role
+            updated_player = self.datastore.update_player(
+                player.id, self.id, role=assignment.role, target_player_id=assignment.target_player_id
+            )
+            if updated_player:
+                self._replace_player(updated_player)
         self.broadcast("roles_assigned")
 
     def start(self) -> None:

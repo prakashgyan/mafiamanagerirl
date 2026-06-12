@@ -24,6 +24,8 @@ const getSuggestedRoleCounts = (playerCount: number): RoleCounts => {
     Doctor: doctor,
     Jester: jester,
     Villager: 0,
+    Survivor: 0,
+    Executioner: 0,
   };
 
   let remaining = playerCount - (mafia + detective + doctor + jester);

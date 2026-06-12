@@ -28,6 +28,7 @@ export type Player = {
   actual_is_alive?: boolean;
   avatar?: string | null;
   friend_id?: number | null;
+  target_player_id?: number | null;
 };
 
 export type LogEntry = {

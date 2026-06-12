@@ -65,6 +65,30 @@ const ROLE_STYLE_MAP: Record<string, RoleStyle> = {
       text: "text-violet-700",
     },
   },
+  survivor: {
+    dark: {
+      border: "border-amber-400",
+      background: "bg-amber-500/10",
+      text: "text-amber-200",
+    },
+    light: {
+      border: "border-amber-400",
+      background: "bg-amber-100",
+      text: "text-amber-700",
+    },
+  },
+  executioner: {
+    dark: {
+      border: "border-fuchsia-400",
+      background: "bg-fuchsia-500/10",
+      text: "text-fuchsia-200",
+    },
+    light: {
+      border: "border-fuchsia-400",
+      background: "bg-fuchsia-100",
+      text: "text-fuchsia-700",
+    },
+  },
 };
 
 const DEFAULT_ALIVE_STYLE: Record<VisualVariant, { border: string; background: string; text: string }> = {

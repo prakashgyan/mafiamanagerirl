@@ -60,6 +60,7 @@ class PlayerDb(Base):
     public_is_alive = Column(Boolean, default=True, nullable=False)
     avatar = Column(String, nullable=True)
     friend_id = Column(Integer, ForeignKey("friends.id"), nullable=True)
+    target_player_id = Column(Integer, ForeignKey("players.id"), nullable=True)
     game = relationship("GameDb", back_populates="players")
     friend = relationship("FriendDb")
 

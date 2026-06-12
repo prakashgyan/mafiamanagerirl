@@ -1,4 +1,4 @@
-export const ROLE_KEYS = ["Mafia", "Detective", "Doctor", "Villager", "Jester"] as const;
+export const ROLE_KEYS = ["Mafia", "Detective", "Doctor", "Villager", "Jester", "Survivor", "Executioner"] as const;
 
 export type RoleName = (typeof ROLE_KEYS)[number];
 
@@ -10,6 +10,8 @@ export const DEFAULT_ROLE_COUNTS: RoleCounts = {
   Doctor: 1,
   Villager: 2,
   Jester: 0,
+  Survivor: 0,
+  Executioner: 0,
 };
 
 /** Shared DnD item type for player dragging across game pages. */
@@ -22,6 +24,8 @@ export const ROLE_BADGE_CLASSES: Record<string, string> = {
   doctor: "bg-sky-500/20 text-sky-300 border border-sky-500/40",
   villager: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
   jester: "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40",
+  survivor: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+  executioner: "bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40",
 };
 
 /** Emoji icons for each role (lowercase role key). */
@@ -31,4 +35,6 @@ export const ROLE_ICONS: Record<string, string> = {
   doctor: "💉",
   villager: "🌾",
   jester: "🃏",
+  survivor: "🛟",
+  executioner: "🎯",
 };

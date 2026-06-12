@@ -61,6 +61,7 @@ class Player(BaseModel):
     public_is_alive: bool = True
     avatar: str | None = None
     friend_id: int | None = None
+    target_player_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

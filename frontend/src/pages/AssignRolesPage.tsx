@@ -21,6 +21,8 @@ const ROLE_META: Record<RoleName, { icon: string; accent: string; dropActive: st
   Doctor:    { icon: "💊", accent: "hover:border-emerald-400/60", dropActive: "border-emerald-400/70 bg-emerald-500/10", full: "border-amber-400/60 bg-amber-500/10" },
   Villager:  { icon: "🏘️", accent: "hover:border-slate-500/60",   dropActive: "border-slate-400/70 bg-slate-500/10",  full: "border-amber-400/60 bg-amber-500/10" },
   Jester:    { icon: "🃏", accent: "hover:border-violet-400/60",  dropActive: "border-violet-400/70 bg-violet-500/10", full: "border-amber-400/60 bg-amber-500/10" },
+  Survivor:    { icon: "🛟", accent: "hover:border-amber-400/60",    dropActive: "border-amber-400/70 bg-amber-500/10",    full: "border-amber-400/60 bg-amber-500/10" },
+  Executioner: { icon: "🎯", accent: "hover:border-fuchsia-400/60", dropActive: "border-fuchsia-400/70 bg-fuchsia-500/10", full: "border-amber-400/60 bg-amber-500/10" },
 };
 
 type DragPayload = {
@@ -304,6 +306,8 @@ const AssignRolesPage = () => {
       Doctor: [],
       Villager: [],
       Jester: [],
+      Survivor: [],
+      Executioner: [],
     };
     if (!game) return map;
     for (const player of game.players) {

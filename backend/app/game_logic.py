@@ -5,7 +5,7 @@ from typing import Iterable
 from .models import GameAggregate, Player
 
 MAFIA_ROLES = {"Mafia"}
-GOOD_ROLES = {"Villager", "Doctor", "Detective", "Jester"}
+GOOD_ROLES = {"Villager", "Doctor", "Detective", "Jester", "Survivor", "Executioner"}
 
 # Precompute lowercase role sets to avoid recomputation on every function call
 MAFIA_ROLES_LOWER = {role.lower() for role in MAFIA_ROLES}

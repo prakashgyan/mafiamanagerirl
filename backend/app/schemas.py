@@ -69,6 +69,7 @@ class PlayerBase(BaseModel):
     public_is_alive: bool = True
     avatar: Optional[str] = None
     friend_id: Optional[int] = None
+    target_player_id: Optional[int] = None
 
 
 class PlayerCreate(BaseModel):
@@ -80,6 +81,7 @@ class PlayerCreate(BaseModel):
 class PlayerUpdateRole(BaseModel):
     player_id: int
     role: str
+    target_player_id: Optional[int] = None
 
 
 class PlayerRead(PlayerBase):
